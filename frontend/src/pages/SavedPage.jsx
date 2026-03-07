@@ -1,6 +1,7 @@
 import { useApp } from "../context/AppContext";
 import { FiLock } from "react-icons/fi";
 import { FaUtensils, FaHeart } from "react-icons/fa6";
+import { RecipeCard } from "../components/RecipeCard";
 
 export default function SavedPage() {
     const { navigate, saved, toggleSave, user } = useApp();
@@ -50,52 +51,16 @@ export default function SavedPage() {
                         </button>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-6">
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-6">
                         {saved.map((r, i) => (
-                            <div
+                            <RecipeCard
                                 key={r.id}
-                                className="card slide-up rounded-[20px] overflow-hidden cursor-default"
-                                style={{ animationDelay: `${i * 0.07}s` }}
-                            >
-                                <div
-                                    className="h-1.5"
-                                    style={{ background: r.accent }}
-                                />
-                                <div
-                                    className="p-5"
-                                    onClick={() => navigate("recipe", r)}
-                                >
-                                    <div className="flex gap-3 items-center mb-3">
-                                        <div
-                                            className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl"
-                                            style={{
-                                                background: r.accent + "22",
-                                            }}
-                                        >
-                                            {r.emoji}
-                                        </div>
-                                        <div>
-                                            <p className="font-bold text-brand-primary text-base">
-                                                {r.title}
-                                            </p>
-                                            <p className="text-[13px] text-brand-primary/80 uppercase tracking-wider">
-                                                {r.cuisine} · {r.time}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="flex justify-end">
-                                        <button
-                                            className="bg-none border-none cursor-pointer text-xl hover:scale-125 transition-transform"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                toggleSave(r);
-                                            }}
-                                        >
-                                            <FaHeart className="text-brand-secondary" />
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                                r={r}
+                                index={i}
+                                isSaved={true}
+                                toggleSave={toggleSave}
+                                navigate={navigate}
+                            />
                         ))}
                     </div>
                 )}

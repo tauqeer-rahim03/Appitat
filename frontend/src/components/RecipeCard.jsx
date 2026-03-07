@@ -61,16 +61,26 @@ const RecipeCardOuter = ({ r, index, isSaved, toggleSave, navigate }) => {
                         </span>
                     </div>
                     <button
-                        className="text-lg bg-none border-none cursor-pointer transition-transform duration-200 hover:scale-125"
+                        className="flex items-center gap-1.5 text-sm font-bold cursor-pointer transition-all duration-200 group"
                         onClick={(e) => {
                             e.stopPropagation();
                             toggleSave(r);
                         }}
                     >
                         {isSaved ? (
-                            <FaHeart className="text-brand-secondary" />
+                            <>
+                                <FaHeart className="text-brand-secondary text-lg" />
+                                <span className="text-brand-secondary">
+                                    Saved
+                                </span>
+                            </>
                         ) : (
-                            <FaRegHeart className="text-brand-primary/40 hover:text-brand-secondary" />
+                            <>
+                                <FaRegHeart className="text-brand-primary/40 group-hover:text-brand-secondary text-lg transition-colors" />
+                                <span className="text-brand-primary/40 group-hover:text-brand-secondary transition-colors">
+                                    Save
+                                </span>
+                            </>
                         )}
                     </button>
                 </div>

@@ -20,20 +20,41 @@ const AccountPage = lazy(() => import("./pages/AccountPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 import { calculateUserBadges } from "./data/badges";
+import { RECIPES } from "./data/constants";
 import { FiCheckCircle, FiX } from "react-icons/fi";
 
 export default function App() {
     const navigate = useNavigate();
     const location = useLocation();
 
-    const [currentRecipe, setCurrentRecipe] = useState(null);
+    const [currentRecipe, setCurrentRecipe] = useState(() => {
+        const storedRec = localStorage.getItem("appitat_current_recipe");
+        try {
+            const parsed = storedRec ? JSON.parse(storedRec) : null;
+            return parsed
+                ? RECIPES.find((r) => r.id === parsed.id) || parsed
+                : null;
+        } catch {
+            return null;
+        }
+    });
     const [user, setUser] = useState(() => {
         const savedUser = localStorage.getItem("appitat_user");
         return savedUser ? JSON.parse(savedUser) : null;
     });
     const [saved, setSaved] = useState(() => {
-        const savedRecipes = localStorage.getItem("appitat_saved");
-        return savedRecipes ? JSON.parse(savedRecipes) : [];
+        try {
+            const savedRecipes = localStorage.getItem("appitat_saved");
+            const parsed = savedRecipes ? JSON.parse(savedRecipes) : [];
+            if (Array.isArray(parsed)) {
+                return parsed.map(
+                    (p) => RECIPES.find((r) => r.id === p.id) || p,
+                );
+            }
+            return [];
+        } catch {
+            return [];
+        }
     });
     const [achievedBadge, setAchievedBadge] = useState(null);
     const [theme, setTheme] = useState(() => {
@@ -52,6 +73,17 @@ export default function App() {
     useEffect(() => {
         localStorage.setItem("appitat_saved", JSON.stringify(saved));
     }, [saved]);
+
+    useEffect(() => {
+        if (currentRecipe) {
+            localStorage.setItem(
+                "appitat_current_recipe",
+                JSON.stringify(currentRecipe),
+            );
+        } else {
+            localStorage.removeItem("appitat_current_recipe");
+        }
+    }, [currentRecipe]);
 
     // Handle Light/Dark Mode Toggle
     useEffect(() => {

@@ -6,12 +6,33 @@ import { FaUtensils, FaFire, FaHeart, FaCheck, FaStar } from "react-icons/fa6";
 
 export default function RecipeDetailPage({ recipe }) {
     const { navigate, saved, toggleSave, addXp } = useApp();
-    const isSaved = saved.find((s) => s.id === recipe.id);
 
     const [showXpToast, setShowXpToast] = useState(false);
     const [earnedXp, setEarnedXp] = useState(0);
 
-    const handleCooked = () => {
+    if (!recipe) {
+        return (
+            <div className="min-h-screen bg-brand-bg flex flex-col items-center justify-center p-6 text-center">
+                <div className="text-[60px] mb-4">🍽️</div>
+                <h2 className="serif text-2xl font-black text-brand-primary mb-2">
+                    Recipe Not Found
+                </h2>
+                <p className="text-brand-primary/60 mb-6 text-sm">
+                    We couldn't find the recipe you're looking for.
+                </p>
+                <button
+                    className="btn-primary"
+                    onClick={() => navigate("dashboard")}
+                >
+                    Back to Dashboard
+                </button>
+            </div>
+        );
+    }
+
+    const isSaved = saved.find((s) => s.id === recipe.id);
+
+    const handleCooked = () => {x``
         let xpAmount = 50; // Easy
         if (recipe.difficulty === "Medium") xpAmount = 100;
         if (recipe.difficulty === "Hard") xpAmount = 150;

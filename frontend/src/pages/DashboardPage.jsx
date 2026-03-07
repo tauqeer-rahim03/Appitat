@@ -525,7 +525,7 @@ export default function DashboardPage() {
                 </div>
 
                 {/* --- 2. RIGHT COLUMN: PREFERENCES (Sticky) --- */}
-                <div className="order-2 lg:order-none lg:col-span-5 lg:col-start-8 lg:row-start-1 lg:row-span-2 bg-brand-card lg:bg-transparent rounded-2xl lg:rounded-none border lg:border-none border-brand-primary/20 p-6 lg:p-0 shadow-sm lg:shadow-none mb-4 lg:mb-0 lg:sticky lg:top-[120px] lg:h-max">
+                <div className="order-2 lg:order-none lg:col-span-5 lg:col-start-8 lg:row-start-1 lg:row-span-2 bg-brand-card lg:bg-transparent rounded-2xl lg:rounded-none border lg:border-none border-brand-primary/20 p-6 pb-28 lg:p-0 shadow-sm lg:shadow-none mb-4 lg:mb-0 lg:sticky lg:top-[120px] lg:h-max">
                     <div className="flex flex-col gap-0 lg:gap-6">
                         <DashboardPreferencesSidebar
                             activeFiltersCount={activeFiltersCount}
