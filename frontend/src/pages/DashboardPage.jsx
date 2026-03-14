@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
-import { GoogleGenAI } from "@google/genai";
 import { useApp } from "../context/AppContext";
+import { aiAPI } from "../lib/api";
 import {
     FiCamera,
     FiRefreshCw,
@@ -39,10 +39,10 @@ export default function DashboardPage() {
 
     // New rich ingredient state
     const [ingredientInput, setIngredientInput] = useState("");
-    const [quantityInput, setQuantityInput] = useState("");
+    const [qtyInput, setQtyInput] = useState("");
     const [imageInputs, setImageInputs] = useState([]); // Array<File>
     const [imagePreviews, setImagePreviews] = useState([]); // Array<DataURL>
-    const [ingredients, setIngredients] = useState([]); // [{id, type: 'text'|'image', name, quantity, image}]
+    const [ingredients, setIngredients] = useState([]); // [{id, type: 'text'|'image', name, qty, image}]
 
     const [selectedCuisines, setSelectedCuisines] = useState([]);
     const [selectedDiets, setSelectedDiets] = useState([]);
@@ -82,7 +82,9 @@ export default function DashboardPage() {
     }, []);
 
     const toggleTag = useCallback((list, set, t) => {
-        set(list.includes(t) ? list.filter((x) => x !== t) : [...list, t]);
+        set(
+            list.includes(t) ? list.filter((item) => item !== t) : [...list, t],
+        );
     }, []);
 
     const handleImageUpload = async (e) => {
@@ -130,7 +132,7 @@ export default function DashboardPage() {
         if (e) e.preventDefault();
 
         const nameVal = ingredientInput.trim();
-        const qtyVal = quantityInput.trim();
+        const qtyVal = qtyInput.trim();
 
         if (!nameVal && imageInputs.length === 0) return;
 
@@ -146,7 +148,7 @@ export default function DashboardPage() {
                         imageInputs.length === 1 && nameVal
                             ? nameVal
                             : file.name.split(".")[0],
-                    quantity: qtyVal || "1",
+                    qty: qtyVal || "1",
                     image: imagePreviews[index],
                 });
             });
@@ -156,7 +158,7 @@ export default function DashboardPage() {
                 id: Date.now().toString(),
                 type: "text",
                 name: nameVal || "Uploaded Image",
-                quantity: qtyVal || "1",
+                qty: qtyVal || "1",
                 image: null,
             });
         }
@@ -165,22 +167,25 @@ export default function DashboardPage() {
 
         // Reset form
         setIngredientInput("");
-        setQuantityInput("");
+        setQtyInput("");
         setImageInputs([]);
         setImagePreviews([]);
     };
 
-    const handleAddQuickIngredient = (name) => {
+    const handleAddQuickIngredient = (ingredientName) => {
         if (
-            ingredients.some((i) => i.name.toLowerCase() === name.toLowerCase())
-        )
+            ingredients.some(
+                (i) => i.name.toLowerCase() === ingredientName.toLowerCase(),
+            )
+        ) {
             return;
+        }
 
         const newIngredient = {
-            id: Date.now().toString() + Math.random().toString(),
+            id: `${Date.now()}-${Math.random()}`,
             type: "text",
-            name: name,
-            quantity: "1",
+            name: ingredientName,
+            qty: "1",
             image: null,
         };
         setIngredients((p) => [...p, newIngredient]);
@@ -192,16 +197,14 @@ export default function DashboardPage() {
         setIngredients((p) => p.filter((x) => x.id !== id));
     }, []);
 
-    const search = useCallback(async () => {
+    const search = async () => {
         setLoading(true);
         setStream("");
         setAiIntro("");
 
         const prefs = [];
         if (ingredients.length) {
-            const ingStrings = ingredients.map(
-                (i) => `${i.quantity} ${i.name}`,
-            );
+            const ingStrings = ingredients.map((i) => `${i.qty} ${i.name}`);
             prefs.push(`ingredients available: ${ingStrings.join(", ")}`);
         }
         if (selectedCuisines.length)
@@ -229,82 +232,40 @@ export default function DashboardPage() {
                 `STRICTLY DO NOT use these ingredients: ${user.neverShowMe.join(", ")}`,
             );
 
-        const prompt = prefs.length
-            ? `As a warm, enthusiastic chef, write exactly 2 sentences recommending recipes based on these context constraints: ${prefs.join("; ")}. Be specific about how the ingredients shine.`
-            : "As a warm chef, write 2 sentences introducing today's featured recipes. Be enthusiastic and appetizing.";
-
         try {
-            const ai = new GoogleGenAI({
-                apiKey: import.meta.env.VITE_GEMINI_API_KEY,
-            });
-            const response = await ai.models.generateContent({
-                model: "gemini-2.5-flash-latest",
-                contents: prompt,
+            const response = await aiAPI.getRecommendations({
+                cuisine: selectedCuisines[0], // Backend currently handles single cuisine
+                cookingTime: selectedTime,
+                dietaryType: selectedDiets[0],
+                spiceLevel: selectedSpice,
             });
 
-            const text =
-                response.text ||
-                "Here are some wonderful recipes crafted just for you!";
+            const aiRecipes = response.data.recipes || [];
 
-            let i = 0;
-            const tick = setInterval(() => {
-                i++;
-                setStream(text.slice(0, i));
-                if (i >= text.length) {
-                    clearInterval(tick);
-                    setAiIntro(text);
-                }
-            }, 16);
+            // Map backend structure to frontend structure if necessary
+            const formattedResults = aiRecipes.map((r, index) => ({
+                id: `ai-${Date.now()}-${index}`,
+                ...r,
+            }));
+
+            setResults(formattedResults);
+            setAiIntro("Here are some wonderful recipes crafted just for you!");
+            setStream("Here are some wonderful recipes crafted just for you!");
         } catch (err) {
             console.error(err);
-            setStream("Here are some wonderful recipes crafted just for you!");
-            setAiIntro("Here are some wonderful recipes crafted just for you!");
-        }
-
-        await new Promise((r) => setTimeout(r, 800));
-
-        let f = [...RECIPES];
-        if (selectedCuisines.length)
-            f = f.filter((r) => selectedCuisines.includes(r.cuisine));
-        if (selectedDiets.length)
-            f = f.filter((r) => selectedDiets.some((d) => r.tags.includes(d)));
-        if (selectedTime === "Under 15 min")
-            f = f.filter((r) => parseInt(r.time) <= 15);
-        if (selectedTime === "Under 30 min")
-            f = f.filter((r) => parseInt(r.time) <= 30);
-        if (selectedTime === "Under 1 hour")
-            f = f.filter((r) => parseInt(r.time) <= 60);
-        if (ingredients.length) {
-            const ings = ingredients.map((x) => x.name.toLowerCase());
-            f = f.filter((r) =>
-                ings.some(
-                    (ingName) =>
-                        r.ingredients.some((ri) =>
-                            ri.toLowerCase().includes(ingName),
-                        ) || r.title.toLowerCase().includes(ingName),
-                ),
+            setStream(
+                "Error getting AI recommendations. Please check your connection: " +
+                    err.message,
             );
+            setAiIntro("Error getting AI recommendations.");
         }
 
-        if (!f.length) f = RECIPES.slice(0, 3);
-
-        setResults(f);
         setLoading(false);
 
         // Gamification events
         addXp(50);
         handleCookDay();
-    }, [
-        ingredients,
-        selectedCuisines,
-        selectedDiets,
-        selectedTime,
-        selectedSpice,
-        selectedServings,
-        user,
-        addXp,
-        handleCookDay,
-    ]);
+    };
 
     return (
         <div className="min-h-screen bg-brand-bg">
@@ -373,9 +334,9 @@ export default function DashboardPage() {
                                         type="text"
                                         className="flex-1 md:w-[120px] bg-brand-card border border-brand-primary/20 outline-none text-brand-primary text-sm font-sans px-3 h-full rounded-input placeholder:text-brand-primary/50 focus:border-brand-accent transition-colors text-center shadow-sm"
                                         placeholder="Qty (e.g. 500g)"
-                                        value={quantityInput}
+                                        value={qtyInput}
                                         onChange={(e) =>
-                                            setQuantityInput(e.target.value)
+                                            setQtyInput(e.target.value)
                                         }
                                     />
                                     <button
@@ -502,9 +463,9 @@ export default function DashboardPage() {
                                             <span className="text-sm font-bold text-brand-primary leading-tight max-w-[120px] truncate">
                                                 {ing.name}
                                             </span>
-                                            {ing.quantity && (
+                                            {ing.qty && (
                                                 <span className="text-[12px] font-semibold text-brand-secondary">
-                                                    {ing.quantity}
+                                                    {ing.qty}
                                                 </span>
                                             )}
                                         </div>

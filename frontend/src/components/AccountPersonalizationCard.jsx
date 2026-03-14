@@ -170,15 +170,17 @@ export function AccountPersonalizationCard({
                                     className="tag text-[14px]! flex items-center gap-1 bg-red-100 text-red-800 border-red-200"
                                 >
                                     {t}
-                                    <button
-                                        className="bg-none border-none cursor-pointer p-0 flex items-center justify-center hover:text-red-500 transition-colors"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleRemoveTag("allergies", t);
-                                        }}
-                                    >
-                                        <FiX />
-                                    </button>
+                                    {editMode.allergies && (
+                                        <button
+                                            className="bg-none border-none cursor-pointer p-0 flex items-center justify-center hover:text-red-500 transition-colors"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleRemoveTag("allergies", t);
+                                            }}
+                                        >
+                                            <FiX />
+                                        </button>
+                                    )}
                                 </span>
                             ))}
                         </div>

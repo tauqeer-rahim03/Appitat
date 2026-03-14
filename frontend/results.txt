@@ -1,0 +1,27 @@
+
+C:\Users\DELL\OneDrive\Desktop\git-demo\ai-recipe-recommender\Ai-recipe-recommender\frontend\src\pages\DashboardPage.jsx
+  180:17  error  Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+  178 |
+  179 |         const newIngredient = {
+> 180 |             id: Date.now().toString() + Math.random().toString(),
+      |                 ^^^^^^^^^^ Cannot call impure function
+  181 |             type: "text",
+  182 |             name: name,
+  183 |             quantity: "1",                                react-hooks/purity
+  180:41  error  Error: Cannot call impure function during render
+
+`Math.random` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+  178 |
+  179 |         const newIngredient = {
+> 180 |             id: Date.now().toString() + Math.random().toString(),
+      |                                         ^^^^^^^^^^^^^ Cannot call impure function
+  181 |             type: "text",
+  182 |             name: name,
+  183 |             quantity: "1",  react-hooks/purity
+
+✖ 2 problems (2 errors, 0 warnings)
+

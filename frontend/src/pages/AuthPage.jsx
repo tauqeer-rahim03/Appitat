@@ -1,10 +1,11 @@
 import { useState, useCallback } from "react";
 import { useApp } from "../context/AppContext";
 import { FaUtensils } from "react-icons/fa6";
-import { FiAlertCircle } from "react-icons/fi";
+import { FiAlertCircle, FiEye, FiEyeOff } from "react-icons/fi";
+import { authAPI } from "../lib/api";
 
 export default function AuthPage({ mode }) {
-    const { navigate, login } = useApp();
+    const { user, navigate, login } = useApp();
     const [isLogin, setIsLogin] = useState(mode === "login");
     const [form, setForm] = useState({
         name: "",
@@ -14,6 +15,8 @@ export default function AuthPage({ mode }) {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const [successAnim, setSuccessAnim] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [greetName, setGreetName] = useState("");
 
     const handle = useCallback(
         async (e) => {
@@ -24,27 +27,50 @@ export default function AuthPage({ mode }) {
             if (!isLogin && !form.name) return setError("Name is required.");
 
             setLoading(true);
-            await new Promise((r) => setTimeout(r, 900));
+            try {
+                let response;
+                if (isLogin) {
+                    response = await authAPI.login({
+                        email: form.email,
+                        password: form.password,
+                    });
+                    const { token, user: userData } = response.data;
+                    const resolvedName = userData?.name || form.email.split("@")[0];
+                    setGreetName(resolvedName);
+                    localStorage.setItem("appitat_token", token);
+                    login(
+                        userData || {
+                            name: resolvedName,
+                            email: form.email,
+                        },
+                    );
+                } else {
+                    response = await authAPI.signup({
+                        username: form.name, // Model still takes username in request but stores in name
+                        email: form.email,
+                        password: form.password,
+                    });
+                    // After signup, we usually log them in or ask to login
+                    setIsLogin(true);
+                    setLoading(false);
+                    return; // No animation yet, just switch to login
+                }
 
-            login({
-                name: form.name || form.email.split("@")[0],
-                email: form.email,
-                age: 28,
-                experience: "beginner",
-                allergies: [],
-                neverShowMe: [],
-                pantry: ["Salt", "Pepper", "Olive Oil", "Water"],
-                xp: 0,
-            });
+                // Trigger success animation
+                setSuccessAnim(true);
+                setLoading(false);
 
-            // Trigger success animation
-            setSuccessAnim(true);
-            setLoading(false);
-
-            // Wait 3 seconds for animation to finish before routing
-            setTimeout(() => {
-                navigate("dashboard");
-            }, 3000);
+                // Wait 3 seconds for animation to finish before routing
+                setTimeout(() => {
+                    navigate("dashboard");
+                }, 3000);
+            } catch (err) {
+                setLoading(false);
+                setError(
+                    err.response?.data?.message ||
+                        "An error occurred during authentication.",
+                );
+            }
         },
         [form, isLogin, login, navigate],
     );
@@ -61,11 +87,11 @@ export default function AuthPage({ mode }) {
                         <h1
                             className="serif leading-[1.05] font-black text-center mb-6 py-4 tracking-tight flex flex-wrap justify-center w-full"
                             style={{
-                                fontSize: `${Math.min(12, 85 / `Hello, ${form.name || form.email.split("@")[0]}`.length)}vw`,
+                                fontSize: `${Math.min(12, 85 / `Hello, ${greetName || form.name || "Chef"}`.length)}vw`,
                                 whiteSpace: "nowrap",
                             }}
                         >
-                            {`Hello, ${form.name || form.email.split("@")[0]}`
+                            {`Hello, ${greetName || form.name || "Chef"}`
                                 .split("")
                                 .map((char, i) => (
                                     <span
@@ -164,15 +190,26 @@ export default function AuthPage({ mode }) {
                         <label className="text-xs font-semibold text-brand-primary/80 block mb-1.5">
                             Password
                         </label>
-                        <input
-                            className="input-field px-3.5 py-2.5 rounded-[10px] text-sm"
-                            type="password"
-                            placeholder="••••••••"
-                            value={form.password}
-                            onChange={(e) =>
-                                setForm({ ...form, password: e.target.value })
-                            }
-                        />
+                        <div className="relative">
+                            <input
+                                className="input-field px-3.5 py-2.5 rounded-[10px] text-sm w-full pr-10"
+                                type={showPassword ? "text" : "password"}
+                                placeholder="••••••••"
+                                value={form.password}
+                                onChange={(e) =>
+                                    setForm({ ...form, password: e.target.value })
+                                }
+                            />
+                            <button
+                                type="button"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-primary/50 hover:text-brand-primary transition-colors focus:outline-none"
+                                onClick={() => setShowPassword(!showPassword)}
+                                tabIndex="-1"
+                                aria-label={showPassword ? "Hide password" : "Show password"}
+                            >
+                                {showPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                            </button>
+                        </div>
                     </div>
                     {error && (
                         <p className="text-brand-accent text-[13px] mb-4 flex items-center gap-1.5 font-semibold">

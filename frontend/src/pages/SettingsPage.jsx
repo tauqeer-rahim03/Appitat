@@ -3,6 +3,7 @@ import { useApp } from "../context/AppContext";
 import { FiCamera, FiCheck, FiArrowLeft } from "react-icons/fi";
 import { AccountPersonalizationCard } from "../components/AccountPersonalizationCard";
 import { AccountPantryCard } from "../components/AccountPantryCard";
+import { userAPI } from "../lib/api";
 
 export default function SettingsPage() {
     const { user, updateUser, navigate } = useApp();
@@ -43,7 +44,22 @@ export default function SettingsPage() {
         setEditMode((prev) => ({ ...prev, [field]: !prev[field] }));
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
+        try {
+            await userAPI.updateProfile({
+                name: localUser.name,
+                email: localUser.email,
+                age: localUser.age,
+                experience: localUser.experience,
+                allergies: localUser.allergies,
+                pantry: localUser.pantry,
+                neverShowMe: localUser.neverShowMe,
+                profilePic: localUser.profilePic,
+                coverPic: localUser.coverPic,
+            });
+        } catch (err) {
+            console.error("Failed to save profile:", err);
+        }
         updateUser(localUser);
         setHasUnsavedChanges(false);
         navigate("account");
@@ -66,7 +82,7 @@ export default function SettingsPage() {
             if (type === "profile") {
                 handleLocalUpdate({ profilePic: reader.result });
             } else if (type === "cover") {
-                handleLocalUpdate({ coverImage: reader.result });
+                handleLocalUpdate({ coverPic: reader.result });
             }
         };
         reader.readAsDataURL(file);
@@ -95,11 +111,11 @@ export default function SettingsPage() {
             <div
                 className="relative px-6 py-10 md:py-16 border-b-[4px] border-brand-secondary group transition-colors"
                 style={{
-                    backgroundColor: user.coverImage
+                    backgroundColor: user.coverPic
                         ? "transparent"
                         : "var(--brand-primary)",
-                    backgroundImage: user.coverImage
-                        ? `linear-gradient(rgba(30, 15, 0, 0.4), rgba(61, 32, 16, 0.8)), url(${user.coverImage})`
+                    backgroundImage: user.coverPic
+                        ? `linear-gradient(rgba(30, 15, 0, 0.4), rgba(61, 32, 16, 0.8)), url(${user.coverPic})`
                         : "linear-gradient(to bottom right, var(--brand-primary), var(--brand-primary))",
                     backgroundSize: "cover",
                     backgroundPosition: "center",
@@ -142,7 +158,11 @@ export default function SettingsPage() {
                                     className="w-full h-full object-cover"
                                 />
                             ) : (
-                                localUser.name[0].toUpperCase()
+                                (localUser.name && localUser.name[0]) ? (
+                                    localUser.name[0].toUpperCase()
+                                ) : (
+                                    "U"
+                                )
                             )}
                             <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity">
                                 <FiCamera className="text-white text-2xl" />

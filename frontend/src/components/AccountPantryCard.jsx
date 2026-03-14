@@ -24,9 +24,6 @@ export function AccountPantryCard({
                             <label className="text-sm font-semibold text-brand-primary/80 mr-4">
                                 Basics you always have
                             </label>
-                            <span className="text-[12px] text-brand-primary/50 mt-0.5 max-w-[120px] leading-tight flex items-center gap-1">
-                                <FaFire className="text-brand-accent scale-90" />
-                            </span>
                         </div>
                         {!hideEditToggle && (
                             <button

@@ -55,11 +55,11 @@ export default function AccountPage() {
             <div
                 className="relative px-6 py-10 md:py-16 text-center border-b-[4px] border-brand-secondary"
                 style={{
-                    backgroundColor: user.coverImage
+                    backgroundColor: user.coverPic
                         ? "transparent"
                         : "var(--brand-primary)",
-                    backgroundImage: user.coverImage
-                        ? `linear-gradient(rgba(30, 15, 0, 0.4), rgba(61, 32, 16, 0.8)), url(${user.coverImage})`
+                    backgroundImage: user.coverPic
+                        ? `linear-gradient(rgba(30, 15, 0, 0.4), rgba(61, 32, 16, 0.8)), url(${user.coverPic})`
                         : "linear-gradient(to bottom right, var(--brand-primary), var(--brand-primary))",
                     backgroundSize: "cover",
                     backgroundPosition: "center",
@@ -85,13 +85,13 @@ export default function AccountPage() {
                                 className="w-full h-full object-cover"
                             />
                         ) : (
-                            user.name[0].toUpperCase()
+                            (user.name && user.name[0]) ? user.name[0].toUpperCase() : "U"
                         )}
                     </div>
 
                     <div className="slide-up">
                         <h1 className="serif text-[32px] md:text-[44px] font-black text-brand-bg mb-1 flex items-center justify-center gap-3">
-                            {user.name}
+                            {user.name || user.email?.split("@")[0] || "User"}
                         </h1>
                         <p className="text-brand-bg/70 text-[14px] md:text-[15px] flex items-center justify-center gap-2">
                             {user.email}

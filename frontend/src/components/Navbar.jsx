@@ -134,11 +134,11 @@ export default function Navbar() {
                                                 className="w-full h-full object-cover"
                                             />
                                         ) : (
-                                            user.name[0].toUpperCase()
+                                            (user.name && user.name[0]) ? user.name[0].toUpperCase() : "U"
                                         )}
                                     </div>
                                     <span className="text-sm font-bold text-brand-primary hidden lg:inline-block">
-                                        {user.name.split(" ")[0]}
+                                        {user.name || (user.email ? user.email.split("@")[0] : "User")}
                                     </span>
                                 </button>
 
@@ -155,7 +155,7 @@ export default function Navbar() {
                                             Profile
                                         </button>
                                         <button
-                                            className="w-full text-left px-4 py-2.5 text-[14px] text-brand-accent hover:bg-brand-accent/10 transition-colors flex items-center gap-2.5 font-mediumS border-t border-brand-primary/10 cursor-pointer"
+                                            className="w-full text-left px-4 py-2.5 text-[14px] text-brand-accent hover:bg-brand-accent/10 transition-colors flex items-center gap-2.5 font-medium border-t border-brand-primary/10 cursor-pointer"
                                             onClick={() => {
                                                 setAccountDropdownOpen(false);
                                                 setShowLogoutConfirm(true);

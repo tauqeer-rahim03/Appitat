@@ -22,6 +22,7 @@ const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 import { calculateUserBadges } from "./data/badges";
 import { RECIPES } from "./data/constants";
 import { FiCheckCircle, FiX } from "react-icons/fi";
+import { userAPI } from "./lib/api";
 
 export default function App() {
     const navigate = useNavigate();
@@ -60,6 +61,28 @@ export default function App() {
     const [theme, setTheme] = useState(() => {
         return localStorage.getItem("appitat_theme") || "light";
     });
+
+    // Fetch user profile on mount if token exists
+    useEffect(() => {
+        const fetchProfile = async () => {
+            const token = localStorage.getItem("appitat_token");
+            if (token && !user) {
+                try {
+                    const response = await userAPI.getProfile();
+                    setUser(response.data);
+
+                    // Also fetch saved recipes if not already in user object
+                    const savedResponse = await userAPI.getMyRecipes();
+                    setSaved(savedResponse.data || []);
+                } catch (err) {
+                    console.error("Session expired or invalid token");
+                    localStorage.removeItem("appitat_token");
+                    setUser(null);
+                }
+            }
+        };
+        fetchProfile();
+    }, []);
 
     // Sync state to localStorage whenever it changes
     useEffect(() => {
@@ -112,7 +135,9 @@ export default function App() {
     const login = (u) => setUser(u);
     const updateUser = (data) => setUser((prev) => ({ ...prev, ...data }));
     const logout = () => {
+        localStorage.removeItem("appitat_token");
         setUser(null);
+        setSaved([]);
         navigate("/");
         window.scrollTo({ top: 0, behavior: "smooth" });
     };
@@ -189,7 +214,11 @@ export default function App() {
                 toggleSave,
                 currentRecipe,
                 navigate: handleNavigate,
-                unlockedBadges: user ? calculateUserBadges(user).unlocked : [],
+                unlockedBadges: user
+                    ? calculateUserBadges(user.xp, user.cookDays).filter(
+                          (b) => b.isUnlocked,
+                      )
+                    : [],
                 theme,
                 toggleTheme,
             }}

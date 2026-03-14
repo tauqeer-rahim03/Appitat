@@ -41,11 +41,26 @@ exports.login = async (req, res) => {
         if (!isMatch) {
             return res.status(400).json({ message: "Invalid credentials" });
         }
-        //create token
+        // Create token
         const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
             expiresIn: "1h",
         });
-        res.json({ token });
+
+        // Create a user object without the password
+        const userData = {
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            profilePic: user.profilePic,
+            pantry: user.pantry,
+            xp: user.xp,
+            level: user.level,
+            experience: user.experience,
+            age: user.age,
+            neverShowMe: user.neverShowMe,
+        };
+
+        res.json({ token, user: userData });
     } catch (error) {
         res.status(500).json({ message: "Error logging in" });
     }

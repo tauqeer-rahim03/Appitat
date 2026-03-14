@@ -8,12 +8,12 @@ const userSchema = new mongoose.Schema({
     // Personalization & Imagery
     profilePic: { type: String, default: "" },
     coverPic: { type: String, default: "" },
-    pantry: [{ type: String }],
+    pantry: [String],
     allergies: [String],
     age: { type: Number },
     experience: {
         type: String,
-        enum: ["beginner", "intermediate", "expert"],
+        enum: ["beginner", "intermediate", "advanced", "pro"],
         default: "beginner",
     },
     neverShowMe: [String],
