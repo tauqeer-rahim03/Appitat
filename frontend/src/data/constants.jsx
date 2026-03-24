@@ -228,3 +228,13 @@ export const SERVING_OPTIONS = [
     { label: "3-4 people", emoji: "👨‍👩‍👧‍👦" },
     { label: "5+ people", emoji: "🎉" },
 ];
+
+export const MEAL_TYPES = [
+    { label: "Breakfast", emoji: "🍳" },
+    { label: "Brunch", emoji: "🥂" },
+    { label: "Lunch", emoji: "🍱" },
+    { label: "Dinner", emoji: "🍽️" },
+    { label: "Fast Food", emoji: "🍟" },
+    { label: "Dessert", emoji: "🍰" },
+    { label: "Snack", emoji: "🍿" },
+];

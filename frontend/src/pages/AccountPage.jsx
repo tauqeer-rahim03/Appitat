@@ -245,18 +245,24 @@ export default function AccountPage() {
                                     user.history.map((h, idx) => (
                                         <div
                                             key={h.recipeId || idx}
-                                            className="flex gap-3 items-center group cursor-pointer"
-                                            onClick={() => navigate("recipe", { id: h.recipeId, ...h })}
+                                            className="flex gap-3 items-center"
                                         >
                                             <div
-                                                className="w-[50px] h-[50px] rounded-xl flex items-center justify-center text-[22px] transition-transform group-hover:scale-105 bg-brand-primary/5 text-brand-secondary"
+                                                className="w-[50px] h-[50px] rounded-xl flex items-center justify-center text-[22px] bg-brand-primary/5 text-brand-secondary"
                                             >
                                                 {h.emoji || "🍳"}
                                             </div>
                                             <div className="flex-1">
-                                                <p className="font-bold text-brand-primary text-[14px] leading-tight group-hover:text-brand-secondary transition-colors">
-                                                    {h.title}
-                                                </p>
+                                                <div className="flex justify-between items-center">
+                                                    <p className="font-bold text-brand-primary text-[14px] leading-tight">
+                                                        {h.title}
+                                                    </p>
+                                                    {h.xpAwarded > 0 && (
+                                                        <span className="text-[10px] font-black bg-brand-secondary/10 text-brand-secondary px-2 py-0.5 rounded-lg">
+                                                            +{h.xpAwarded} XP
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <p className="text-[11px] text-brand-primary/80 mt-0.5 uppercase tracking-wider">
                                                     {h.cuisine} • {h.cookedAt ? new Date(h.cookedAt).toLocaleDateString() : "Recently"}
                                                 </p>

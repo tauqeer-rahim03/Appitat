@@ -1,77 +1,72 @@
 const User = require("../models/User");
 const Recipe = require("../models/Recipe");
 
+// Helper for consistent error responses
+const handleError = (res, error, message = "Internal server error", status = 500) => {
+    console.error(`${message}:`, error);
+    res.status(status).json({
+        message,
+        error: error.message,
+        ...(process.env.NODE_ENV === "development" && { stack: error.stack })
+    });
+};
+
 // Fetch the user's saved recipes
 exports.getMyRecipes = async (req, res) => {
     try {
         const recipes = await Recipe.find({ userId: req.user.userId });
         res.status(200).json(recipes);
     } catch (error) {
-        res.status(500).json({
-            message: "Error fetching saved recipes",
-            error: error.message,
-        });
+        handleError(res, error, "Error fetching saved recipes");
     }
 };
 
-// Updated Pantry
+// Update Pantry & Allergies (Legacy/Specific endpoint)
 exports.updatePantry = async (req, res) => {
     try {
-        const { ingredients, allergies } = req.body; // Added allergies here so user can update both
+        const { ingredients, allergies } = req.body;
 
         const user = await User.findByIdAndUpdate(
             req.user.userId,
-            { pantry: ingredients, allergies: allergies },
-            { new: true },
+            { $set: { pantry: ingredients, allergies: allergies } },
+            { new: true, runValidators: true },
         ).select("-password");
 
         res.status(200).json({
-            message: "Profile updated successfully",
+            message: "Pantry updated successfully",
             pantry: user.pantry,
             allergies: user.allergies,
         });
     } catch (error) {
-        res.status(500).json({ message: "Error updating profile settings" });
+        handleError(res, error, "Error updating pantry settings");
     }
 };
 
-// Get Full Profile including XP, Level, and History
+// Get Full Profile
 exports.getProfile = async (req, res) => {
     try {
-        console.log("[Profile] Fetching profile for:", req.user.userId);
-        const user = await User.findById(req.user.userId)
-            .select("-password");
+        const user = await User.findById(req.user.userId).select("-password");
         if (!user) return res.status(404).json({ message: "User not found" });
         res.status(200).json(user);
     } catch (error) {
-        console.error("GET PROFILE ERROR:", error);
-        res.status(500).json({ 
-            message: "Error fetching profile", 
-            error: error.message,
-            stack: error.stack,
-            requestedUserId: req.user?.userId 
-        });
+        handleError(res, error, "Error fetching profile");
     }
 };
 
-// profile pic
+// Update profile images (Multer + JSON fallback)
 exports.updateProfileImages = async (req, res) => {
     try {
         const userId = req.user.userId;
         const { profilePic, coverPic } = req.body;
-        let updates = {};
+        const updates = {};
 
-        // If a new profile picture was uploaded via Multer
         if (req.files?.profilePic) {
-            // Normalize Windows paths to use forward slashes for URL consistency
             updates.profilePic = req.files.profilePic[0].path.replace(/\\/g, "/");
         } else if (profilePic !== undefined) {
             updates.profilePic = profilePic;
         }
 
-        // If a new cover picture was uploaded via Multer
         if (req.files?.coverPic) {
-            // Normalize Windows paths to use forward slashes for URL consistency
             updates.coverPic = req.files.coverPic[0].path.replace(/\\/g, "/");
         } else if (coverPic !== undefined) {
             updates.coverPic = coverPic;
@@ -83,7 +78,7 @@ exports.updateProfileImages = async (req, res) => {
 
         const updatedUser = await User.findByIdAndUpdate(
             userId,
-            updates,
+            { $set: updates },
             { new: true },
         ).select("-password");
 
@@ -93,56 +88,48 @@ exports.updateProfileImages = async (req, res) => {
             coverPic: updatedUser.coverPic,
         });
     } catch (error) {
-        res.status(500).json({
-            message: "Error updating images",
-            error: error.message,
-        });
+        handleError(res, error, "Error updating images");
     }
 };
 
-// Update basic profile info (name, age, experience, neverShowMe)
-    exports.updateProfile = async (req, res) => {
+// Update basic profile info (Refactored with whitelist)
+exports.updateProfile = async (req, res) => {
     try {
-        const { name, email, age, experience, allergies, pantry, neverShowMe, profilePic, coverPic, xp, level, cookDays } = req.body;
-
+        const whitelist = [
+            "name", "email", "age", "experience", "allergies", 
+            "pantry", "neverShowMe", "profilePic", "coverPic", 
+            "xp", "level", "cookDays"
+        ];
+        
         const updates = {};
-        if (name !== undefined) updates.name = name;
-        if (email !== undefined) updates.email = email;
-        if (age !== undefined) updates.age = age;
-        if (experience !== undefined) updates.experience = experience;
-        if (allergies !== undefined) updates.allergies = allergies;
-        if (pantry !== undefined) updates.pantry = pantry;
-        if (neverShowMe !== undefined) updates.neverShowMe = neverShowMe;
-        if (profilePic !== undefined) updates.profilePic = profilePic;
-        if (coverPic !== undefined) updates.coverPic = coverPic;
-        if (xp !== undefined) updates.xp = xp;
-        if (level !== undefined) updates.level = level;
-        if (cookDays !== undefined) updates.cookDays = cookDays;
+        whitelist.forEach(field => {
+            if (req.body[field] !== undefined) {
+                updates[field] = req.body[field];
+            }
+        });
 
-        // Use $set explicitly to avoid Mongoose issues with direct object updates
+        if (Object.keys(updates).length === 0) {
+            return res.status(400).json({ message: "No valid update fields provided" });
+        }
+
         const user = await User.findByIdAndUpdate(
             req.user.userId,
             { $set: updates },
-            { new: true },
+            { new: true, runValidators: true },
         ).select("-password");
 
-        if (!user) {
-            return res.status(404).json({ message: "User not found" });
-        }
+        if (!user) return res.status(404).json({ message: "User not found" });
 
-        console.log(`[Profile Update] User ${user.email} updated. Fields: ${Object.keys(updates).join(", ")}`);
-        
         res.status(200).json({
             message: "Profile updated successfully",
             user,
         });
     } catch (error) {
-        console.error("UPDATE PROFILE ERROR:", error);
-        res.status(500).json({ message: "Error updating profile" });
+        handleError(res, error, "Error updating profile");
     }
 };
 
-// Add XP - dedicated endpoint for atomic XP updates
+// Add XP - Dedicated atomic update
 exports.addXp = async (req, res) => {
     try {
         const { amount } = req.body;
@@ -150,59 +137,47 @@ exports.addXp = async (req, res) => {
             return res.status(400).json({ message: "Invalid XP amount" });
         }
 
-        const user = await User.findByIdAndUpdate(
-            req.user.userId,
-            { $inc: { xp: amount } },
-            { new: true },
-        ).select("-password");
+        const user = await User.findById(req.user.userId);
+        if (!user) return res.status(404).json({ message: "User not found" });
 
-        if (!user) {
-            return res.status(404).json({ message: "User not found" });
-        }
-
+        user.xp += Number(amount);
+        
         // Recalculate level (500 XP per level)
         const newLevel = Math.floor(user.xp / 500) + 1;
         if (user.level !== newLevel) {
             user.level = newLevel;
-            await user.save();
         }
 
-        console.log(`[XP] User ${user.email} earned ${amount} XP, total: ${user.xp}, level: ${user.level}`);
+        await user.save();
 
         res.status(200).json({
             message: "XP added successfully",
             xp: user.xp,
+            level: user.level,
             user,
         });
     } catch (error) {
-        console.error("ADD XP ERROR:", error);
-        res.status(500).json({ message: "Error adding XP" });
+        handleError(res, error, "Error adding XP");
     }
 };
 
 // Record a cooked recipe in user history
 exports.recordCook = async (req, res) => {
     try {
-        const { recipeId, title, emoji, cuisine } = req.body;
-        console.log("[Record Cook] Recipe:", { recipeId, title, emoji, cuisine });
-
-        // Safeguard for emoji being passed as an object (React component)
-        let safeEmoji = "🍳";
-        if (typeof emoji === "string") {
-            safeEmoji = emoji;
-        }
+        const { recipeId, title, emoji, cuisine, xpAwarded } = req.body;
+        const safeEmoji = typeof emoji === "string" ? emoji : "🍳";
 
         const user = await User.findById(req.user.userId);
         if (!user) return res.status(404).json({ message: "User not found" });
 
         if (!user.history) user.history = [];
         
-        // Push new record
         user.history.unshift({
             recipeId: String(recipeId),
             title,
             emoji: safeEmoji,
             cuisine,
+            xpAwarded: Number(xpAwarded) || 0,
             cookedAt: new Date(),
         });
 
@@ -214,17 +189,17 @@ exports.recordCook = async (req, res) => {
         await user.save();
         res.status(200).json({ message: "Cook recorded successfully", history: user.history });
     } catch (error) {
-        console.error("RECORD COOK ERROR:", error);
-        res.status(500).json({ message: "Error recording cook", error: error.message });
+        handleError(res, error, "Error recording cook");
     }
 };
 
+// Sync Saved Recipes
 exports.syncSavedRecipes = async (req, res) => {
     try {
         const { savedRecipes } = req.body;
         const user = await User.findByIdAndUpdate(
             req.user.userId,
-            { savedRecipes },
+            { $set: { savedRecipes } },
             { new: true, runValidators: true }
         ).select("-password");
 
@@ -232,7 +207,6 @@ exports.syncSavedRecipes = async (req, res) => {
 
         res.status(200).json({ message: "Saved recipes synced", savedRecipes: user.savedRecipes });
     } catch (error) {
-        console.error("SYNC SAVED RECIPES ERROR:", error);
-        res.status(500).json({ message: "Error syncing saved recipes", error: error.message });
+        handleError(res, error, "Error syncing saved recipes");
     }
 };

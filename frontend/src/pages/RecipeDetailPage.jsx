@@ -5,10 +5,14 @@ import { FiClock, FiShoppingCart, FiHeart } from "react-icons/fi";
 import { FaUtensils, FaFire, FaHeart, FaCheck, FaStar } from "react-icons/fa6";
 
 export default function RecipeDetailPage({ recipe }) {
-    const { navigate, saved, toggleSave, addXp } = useApp();
+    const { navigate, saved, toggleSave, addXp, user } = useApp();
 
     const [showXpToast, setShowXpToast] = useState(false);
     const [earnedXp, setEarnedXp] = useState(0);
+
+    // Check if already cooked in this session or in history
+    const alreadyCooked = user?.history?.some(h => h.recipeId === String(recipe?.id));
+    const [isCooked, setIsCooked] = useState(alreadyCooked);
 
     if (!recipe) {
         return (
@@ -34,6 +38,8 @@ export default function RecipeDetailPage({ recipe }) {
     const isSaved = saved.find((s) => s.id === recipe.id);
 
     const handleCooked = () => {
+        if (isCooked) return;
+
         let xpAmount = 50; // Easy
         if (recipe.difficulty === "Medium") xpAmount = 100;
         if (recipe.difficulty === "Hard") xpAmount = 150;
@@ -41,6 +47,7 @@ export default function RecipeDetailPage({ recipe }) {
         addXp(xpAmount, recipe);
         setEarnedXp(xpAmount);
         setShowXpToast(true);
+        setIsCooked(true);
 
         // Fire confetti
         confetti({
@@ -137,15 +144,16 @@ export default function RecipeDetailPage({ recipe }) {
                                 </button>
 
                                 <button
-                                    className="flex items-center gap-2 border-2 rounded-xl px-5 py-2.5 cursor-pointer font-bold text-sm transition-all duration-200 hover:scale-105 shadow-md"
+                                    className={`flex items-center gap-2 border-2 rounded-xl px-5 py-2.5 font-bold text-sm transition-all duration-200 shadow-md ${isCooked ? 'opacity-60 cursor-not-allowed' : 'hover:scale-105 cursor-pointer'}`}
                                     style={{
-                                        background: accent,
+                                        background: isCooked ? 'var(--color-brand-primary)' : accent,
                                         color: "var(--color-brand-bg)",
-                                        borderColor: accent,
+                                        borderColor: isCooked ? 'var(--color-brand-primary)' : accent,
                                     }}
                                     onClick={handleCooked}
+                                    disabled={isCooked}
                                 >
-                                    <FaCheck /> I Made This!
+                                    {isCooked ? <><FaCheck /> Cooked!</> : <><FaCheck /> I Made This!</>}
                                 </button>
                             </div>
                         </div>

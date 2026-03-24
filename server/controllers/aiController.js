@@ -1,119 +1,100 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const fs = require("fs");
-if (!process.env.GOOGLE_API_KEY) {
-    console.error("CRITICAL: GOOGLE_API_KEY is not defined in .env");
-}
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || "");
 const User = require("../models/User");
 const Recipe = require("../models/Recipe");
 const axios = require("axios");
 
+if (!process.env.GOOGLE_API_KEY) {
+    console.error("CRITICAL: GOOGLE_API_KEY is not defined in .env");
+}
+
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || "");
+const AI_MODEL = "gemini-3.1-flash-lite-preview";
+
+// Helper for consistent error responses
+const handleError = (res, error, message = "Internal server error", status = 500) => {
+    console.error(`${message}:`, error);
+    res.status(status).json({
+        message,
+        error: error.message,
+        ...(process.env.NODE_ENV === "development" && { stack: error.stack })
+    });
+};
+
+// Helper to update XP & Level (Standard: 500 XP per Level)
+const awardXp = async (userId, amount) => {
+    const user = await User.findById(userId);
+    if (!user) return null;
+
+    user.xp += Number(amount);
+    const newLevel = Math.floor(user.xp / 500) + 1;
+    const hasLeveledUp = user.level !== newLevel;
+    
+    if (hasLeveledUp) {
+        user.level = newLevel;
+    }
+
+    await user.save();
+    return { xp: user.xp, level: user.level, hasLeveledUp };
+};
+
 exports.getRecommendation = async (req, res) => {
     try {
-        const { cuisine, cookingTime, dietaryType, spiceLevel, ingredients: reqIngredients } = req.body;
-        console.log("[AI] Request Body:", req.body);
+        const { cuisine, cookingTime, dietaryType, spiceLevel, mealType, ingredients: reqIngredients } = req.body;
 
-        // Fetch the user's saved data from MongoDB
         const user = await User.findById(req.user.userId);
-        if (!user) {
-            console.log("[AI] User not found:", req.user.userId);
-            return res.status(404).json({ message: "User not found" });
-        }
+        if (!user) return res.status(404).json({ message: "User not found" });
 
-        // Combined ingredients: Pantry + Request Ingredients
-        const pantryItems = user.pantry || [];
-        const extraIngredients = reqIngredients || [];
-        const finalIngredients = [...new Set([...pantryItems, ...extraIngredients])];
-        
-        console.log("[AI] finalIngredients:", finalIngredients);
-
-        const finalAllergies =
-            user.allergies && user.allergies.length > 0 ? user.allergies : [];
-
+        const finalIngredients = [...new Set([...(user.pantry || []), ...(reqIngredients || [])])];
         if (finalIngredients.length === 0) {
-            return res.status(400).json({
-                message:
-                    "Your ingredient list is empty. Add ingredients to your search or profile first!",
-            });
+            return res.status(400).json({ message: "Your ingredient list is empty." });
         }
 
         const model = genAI.getGenerativeModel({
-            model: "gemini-3.1-flash-lite-preview",
+            model: AI_MODEL,
             generationConfig: { responseMimeType: "application/json" }
         });
 
         const prompt = `
-            Act as a professional chef. Suggest 3 distinct and creative recipes using: ${finalIngredients.join(", ")}. 
-            EXCLUDE these ingredients (Allergies/Dislikes): ${finalAllergies.concat(user.neverShowMe || []).join(", ") || "None"}.
-            User Profile - Skill Level: ${user.experience || "beginner"}, Age: ${user.age || "adult"}.
-            Preferences - Cuisine: ${cuisine || "Any"}, Max Time: ${cookingTime || "Any"}, Diet: ${dietaryType || "None"}, Spice: ${spiceLevel || "Any"}.
+            Act as a professional master chef. Suggest 4 distinct, creative, and highly detailed recipes using: ${finalIngredients.join(", ")}. 
+            EXCLUDE: ${(user.allergies || []).concat(user.neverShowMe || []).join(", ") || "None"}.
+            User Skill: ${user.experience || "beginner"}. 
+            Preferences: Meal Type: ${mealType || "Any"}, Cuisine: ${cuisine || "Any"}, Max Time: ${cookingTime || "Any"}, Diet: ${dietaryType || "None"}, Spice: ${spiceLevel || "Any"}.
             
-            IMPORTANT: For visual consistency, you MUST provide a vibrant Hex color code for the 'accent' field.
-            Recommended Premium Accents: #F5C842 (Saffron), #FF8C69 (Salmon), #E85D4A (Harissa), #4CAF50 (Green), #FF9F1C (Orange), #C0392B (Red).
-            
-            Response Format: Return a JSON object with a single key 'recipes' which is an array of objects.
-            Each recipe object MUST have these fields:
-            - title (string)
-            - emoji (string emoji, e.g. "🥗")
-            - description (string, 2 sentences max)
-            - cuisine (string)
-            - ingredients (array of strings)
-            - steps (array of strings)
-            - time (string, e.g. "25 min")
-            - calories (number)
-            - difficulty (string: Easy, Medium, or Hard)
-            - servings (number)
-            - accent (string hex code, e.g. "#FF5733")
-            - tags (array of strings, e.g. ["Vegan", "Gluten-Free"])
+            IMPORTANT: For each recipe, provide a list of at least 8-10 precise, professional, and detailed steps. 
+            Each step should be descriptive enough for a high-quality cooking experience.
+
+            Response Format: Return a JSON object with 'recipes' array.
+            Recipe fields: title, emoji, description (2 full sentences), cuisine, ingredients (array of strings with quantities), steps (array of 8-10 detailed strings), time, calories (number), difficulty, servings (number), accent (hex), tags.
         `;
 
         const result = await model.generateContent(prompt);
-        const text = result.response
-            .text()
-            .replace(/```json|```/g, "")
-            .trim();
+        const text = result.response.text().replace(/```json|```/g, "").trim();
+        const recipes = JSON.parse(text).recipes;
 
         res.status(200).json({
-            message: "Smart recipes generated from your pantry!",
-            recipes: JSON.parse(text).recipes,
+            message: "Smart recipes generated!",
+            recipes
         });
     } catch (error) {
-        console.error("AI Recommendation Error:", error);
-        res.status(500).json({
-            message: "Error generating recipe",
-            error: error.message,
-        });
+        handleError(res, error, "Error generating recipe");
     }
 };
 
 exports.identifyIngredientsAndRecommend = async (req, res) => {
     try {
-        console.log("Checking API Connection...");
-
-        if (!req.body) {
-            return res.status(400).json({
-                message:
-                    "Request body is missing. Check your middleware order.",
-            });
-        }
-
         let imageData;
         const imageUrl = req.body.imageUrl;
 
-        // Image Source Handling
         if (req.file) {
             imageData = {
                 inlineData: {
-                    data: Buffer.from(fs.readFileSync(req.file.path)).toString(
-                        "base64",
-                    ),
+                    data: Buffer.from(fs.readFileSync(req.file.path)).toString("base64"),
                     mimeType: req.file.mimetype,
                 },
             };
         } else if (imageUrl) {
-            const response = await axios.get(imageUrl, {
-                responseType: "arraybuffer",
-            });
+            const response = await axios.get(imageUrl, { responseType: "arraybuffer" });
             imageData = {
                 inlineData: {
                     data: Buffer.from(response.data).toString("base64"),
@@ -121,33 +102,22 @@ exports.identifyIngredientsAndRecommend = async (req, res) => {
                 },
             };
         } else {
-            return res.status(400).json({
-                message: "Please upload an image file or provide an imageUrl",
-            });
+            return res.status(400).json({ message: "No image provided" });
         }
 
-        const model = genAI.getGenerativeModel({
-            model: "gemini-2.5-flash",
+        const model = genAI.getGenerativeModel({ 
+            model: AI_MODEL,
+            generationConfig: { responseMimeType: "application/json" }
         });
 
-        const prompt = `Analyze this image. List ingredients seen and suggest 3 distinct recipes that can be made with them. 
-        Return ONLY a JSON object with two keys: 
-        1. 'identifiedIngredients': an array of strings.
-        2. 'recipes': an array of recipe objects, each containing:
-           {'title': '', 'emoji': '', 'description': '', 'cuisine': '', 'ingredients': [], 'steps': [], 'time': '', 'calories': 0, 'difficulty': '', 'servings': 1, 'accent': '', 'tags': []}`;
+        const prompt = `Analyze this image. List ingredients seen and suggest 3 distinct recipes. 
+        Return ONLY a JSON object with 'identifiedIngredients' (array) and 'recipes' (array of recipe objects).`;
 
         const result = await model.generateContent([prompt, imageData]);
-        const text = result.response
-            .text()
-            .replace(/```json|```/g, "")
-            .trim();
+        const text = result.response.text().replace(/```json|```/g, "").trim();
         const aiResponse = JSON.parse(text);
 
-        // We only save the first one as a default "primary" discovery, or we could handle multiple.
-        // For simplicity and to match the current schema, we'll save the first one but return all to the user.
         const primaryRecipe = aiResponse.recipes[0];
-
-        // Save and Award XP
         const newRecipe = new Recipe({
             userId: req.user.userId,
             ...primaryRecipe,
@@ -157,82 +127,36 @@ exports.identifyIngredientsAndRecommend = async (req, res) => {
         });
 
         const savedRecipe = await newRecipe.save();
-        await User.findByIdAndUpdate(
-            req.user.userId,
-            { $inc: { xp: 30 } },
-            { returnDocument: "after" },
-        );
+        const xpStatus = await awardXp(req.user.userId, 30);
 
         res.status(200).json({
             message: "Ingredients identified and recipes generated!",
             identifiedIngredients: aiResponse.identifiedIngredients,
             recipes: aiResponse.recipes,
             savedRecipeId: savedRecipe._id,
+            xpStatus
         });
     } catch (error) {
-        console.error("Vision Error:", error);
-        res.status(500).json({
-            message: "Error processing image",
-            error: error.message,
-        });
+        handleError(res, error, "Error processing image");
     }
 };
 
-// saves the recipe to the database
 exports.saveRecipe = async (req, res) => {
     try {
         const userId = req.user.userId;
-        const {
-            title,
-            ingredients,
-            instructions,
-            servings,
-            recipeImage,
-            cuisine,
-            cookingTime,
-            dietaryType,
-            spiceLevel,
-        } = req.body;
-
-        const newRecipe = new Recipe({
-            userId,
-            title,
-            ingredients,
-            instructions,
-            servings,
-            recipeImage,
-            cuisine,
-            cookingTime,
-            dietaryType,
-            spiceLevel,
-        });
+        const newRecipe = new Recipe({ userId, ...req.body });
         const savedRecipe = await newRecipe.save();
 
-        const user = await User.findById(userId);
-        user.xp += 50;
-
-        const xpRequiredForNextLevel = user.level * 200;
-        let hasLeveledUp = false;
-
-        if (user.xp >= xpRequiredForNextLevel) {
-            user.level += 1;
-            hasLeveledUp = true;
-        }
-
-        await user.save();
+        const xpStatus = await awardXp(userId, 50);
 
         res.status(201).json({
             message: "Recipe saved and XP awarded!",
             recipe: savedRecipe,
             xpGained: 50,
-            newLevel: user.level,
-            leveledUp: hasLeveledUp,
+            xpStatus
         });
     } catch (error) {
-        res.status(500).json({
-            message: "Error saving recipe",
-            error: error.message,
-        });
+        handleError(res, error, "Error saving recipe");
     }
 };
 
@@ -242,10 +166,8 @@ exports.getRecipeById = async (req, res) => {
         const userId = req.user.userId;
 
         const recipe = await Recipe.findById(id);
-        if (!recipe)
-            return res.status(404).json({ message: "Recipe not found" });
+        if (!recipe) return res.status(404).json({ message: "Recipe not found" });
 
-        // Update user's recentlyViewed with the viewed recipe
         await User.findByIdAndUpdate(userId, {
             $push: {
                 recentlyViewed: {
@@ -258,7 +180,7 @@ exports.getRecipeById = async (req, res) => {
 
         res.status(200).json(recipe);
     } catch (error) {
-        res.status(500).json({ message: "Error", error: error.message });
+        handleError(res, error, "Error fetching recipe");
     }
 };
 

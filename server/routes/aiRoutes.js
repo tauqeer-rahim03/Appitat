@@ -8,15 +8,9 @@ const upload = multer({ dest: "uploads/" });
 
 // ai Recommendation Route
 router.post("/recommend", auth, aiController.getRecommendation);
-router.get("/recommend", (req, res) => {
-    res.send("<h1>AI Recommendations</h1>");
-});
 
 // save Recipe Route
 router.post("/save", auth, aiController.saveRecipe);
-router.get("/save", (req, res) => {
-    res.send("<h1>Save Route is Active</h1>");
-});
 
 // gemini vision route
 router.post(

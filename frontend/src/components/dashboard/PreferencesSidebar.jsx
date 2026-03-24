@@ -6,7 +6,8 @@ import {
     SPICE_LEVELS,
     CALORIE_OPTIONS,
     SERVING_OPTIONS,
-} from "../data/constants";
+    MEAL_TYPES,
+} from "../../data/constants";
 
 export function DashboardPreferencesSidebar({
     activeFiltersCount,
@@ -27,6 +28,8 @@ export function DashboardPreferencesSidebar({
     setSelectedCalories,
     selectedServings,
     setSelectedServings,
+    selectedMealType,
+    setSelectedMealType,
     toggleTag,
 }) {
     return (
@@ -62,6 +65,51 @@ export function DashboardPreferencesSidebar({
                     showMobileFilters ? "flex" : "hidden lg:flex"
                 }`}
             >
+                {/* Meal Type Accordion */}
+                <div>
+                    <button
+                        className="w-full flex justify-between items-center cursor-pointer mb-4 border-none bg-none p-0 outline-none"
+                        onClick={() => toggleCategory("mealType")}
+                    >
+                        <p className="text-[14px] font-bold text-brand-primary/80 tracking-widest uppercase mb-0 flex items-center gap-2">
+                           MEAL TYPE
+                        </p>
+                        <div className="text-brand-primary/80">
+                            {openCategories.mealType ? (
+                                <FiChevronUp size={20} />
+                            ) : (
+                                <FiChevronDown size={20} />
+                            )}
+                        </div>
+                    </button>
+                    {openCategories.mealType && (
+                        <div className="flex flex-wrap gap-3 slide-up">
+                            {MEAL_TYPES.map((t) => (
+                                <button
+                                    key={t.label}
+                                    className={`px-4 py-2 md:px-5 md:py-2.5 rounded-button border text-[14px] md:text-[15px] font-semibold cursor-pointer transition-all ${
+                                        selectedMealType === t.label
+                                            ? "bg-brand-secondary text-white border-brand-secondary shadow-md shadow-brand-secondary/20 hover:scale-105 hover:shadow-[0_0_18px_4px_rgba(160,58,19,0.45)]"
+                                            : "bg-brand-card text-brand-primary/80 border-brand-primary/20 hover:border-brand-secondary hover:text-brand-secondary hover:scale-105 hover:shadow-[0_0_14px_3px_rgba(160,58,19,0.2)]"
+                                    }`}
+                                    onClick={() =>
+                                        setSelectedMealType(
+                                            selectedMealType === t.label
+                                                ? ""
+                                                : t.label,
+                                        )
+                                    }
+                                >
+                                    <span className="mr-2 opacity-90">
+                                        {t.emoji}
+                                    </span>{" "}
+                                    {t.label}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
                 {/* Cuisine Accordion */}
                 <div>
                     <button

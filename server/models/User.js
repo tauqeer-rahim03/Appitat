@@ -34,6 +34,7 @@ const userSchema = new mongoose.Schema({
             title: String,
             emoji: String,
             cuisine: String,
+            xpAwarded: { type: Number, default: 0 },
             cookedAt: { type: Date, default: Date.now },
         },
     ],

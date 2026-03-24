@@ -24,43 +24,18 @@ import { RECIPES } from "./data/constants";
 import { FiCheckCircle, FiX } from "react-icons/fi";
 import { userAPI } from "./lib/api";
 
+import useLocalStorage from "./hooks/useLocalStorage";
+import useTheme from "./hooks/useTheme";
+
 export default function App() {
     const navigate = useNavigate();
     const location = useLocation();
+    const { theme, toggleTheme } = useTheme();
 
-    const [currentRecipe, setCurrentRecipe] = useState(() => {
-        const storedRec = localStorage.getItem("appitat_current_recipe");
-        try {
-            const parsed = storedRec ? JSON.parse(storedRec) : null;
-            return parsed
-                ? RECIPES.find((r) => r.id === parsed.id) || parsed
-                : null;
-        } catch {
-            return null;
-        }
-    });
-    const [user, setUser] = useState(() => {
-        const savedUser = localStorage.getItem("appitat_user");
-        return savedUser ? JSON.parse(savedUser) : null;
-    });
-    const [saved, setSaved] = useState(() => {
-        try {
-            const savedRecipes = localStorage.getItem("appitat_saved");
-            const parsed = savedRecipes ? JSON.parse(savedRecipes) : [];
-            if (Array.isArray(parsed)) {
-                return parsed.map(
-                    (p) => RECIPES.find((r) => r.id === p.id) || p,
-                );
-            }
-            return [];
-        } catch {
-            return [];
-        }
-    });
+    const [currentRecipe, setCurrentRecipe] = useLocalStorage("appitat_current_recipe", null);
+    const [user, setUser] = useLocalStorage("appitat_user", null);
+    const [saved, setSaved] = useLocalStorage("appitat_saved", []);
     const [achievedBadge, setAchievedBadge] = useState(null);
-    const [theme, setTheme] = useState(() => {
-        return localStorage.getItem("appitat_theme") || "light";
-    });
 
     // Dashboard Persistence States
     const [dashIngredients, setDashIngredients] = useState([]);
@@ -72,6 +47,7 @@ export default function App() {
     const [dashSelectedSpice, setDashSelectedSpice] = useState("");
     const [dashSelectedCalories, setDashSelectedCalories] = useState("");
     const [dashSelectedServings, setDashSelectedServings] = useState("");
+    const [dashSelectedMealType, setDashSelectedMealType] = useState("");
 
     // Fetch user profile on mount if token exists but no user state
     useEffect(() => {
@@ -81,7 +57,6 @@ export default function App() {
                 try {
                     const response = await userAPI.getProfile();
                     setUser(response.data);
-
                     if (response.data.savedRecipes) {
                         setSaved(response.data.savedRecipes);
                     }
@@ -94,44 +69,6 @@ export default function App() {
         };
         fetchProfile();
     }, []);
-
-    // Sync state to localStorage whenever it changes
-    useEffect(() => {
-        if (user) {
-            localStorage.setItem("appitat_user", JSON.stringify(user));
-        } else {
-            localStorage.removeItem("appitat_user");
-        }
-    }, [user]);
-
-    useEffect(() => {
-        localStorage.setItem("appitat_saved", JSON.stringify(saved));
-    }, [saved]);
-
-    useEffect(() => {
-        if (currentRecipe) {
-            localStorage.setItem(
-                "appitat_current_recipe",
-                JSON.stringify(currentRecipe),
-            );
-        } else {
-            localStorage.removeItem("appitat_current_recipe");
-        }
-    }, [currentRecipe]);
-
-    // Handle Light/Dark Mode Toggle
-    useEffect(() => {
-        localStorage.setItem("appitat_theme", theme);
-        if (theme === "dark") {
-            document.documentElement.classList.add("dark");
-        } else {
-            document.documentElement.classList.remove("dark");
-        }
-    }, [theme]);
-
-    const toggleTheme = () => {
-        setTheme((prevTheme) => (prevTheme === "light" ? "dark" : "light"));
-    };
 
     const handleNavigate = (path, data) => {
         if (data) setCurrentRecipe(data);
@@ -248,7 +185,8 @@ export default function App() {
                         recipeId: recipeMetadata.id,
                         title: recipeMetadata.title,
                         emoji: typeof recipeMetadata.emoji === 'string' ? recipeMetadata.emoji : "🍳",
-                        cuisine: recipeMetadata.cuisine
+                        cuisine: recipeMetadata.cuisine,
+                        xpAwarded: amount
                     });
                     if (recordRes.data?.user) {
                         setUser(recordRes.data.user);
@@ -335,6 +273,8 @@ export default function App() {
                 setSelectedCalories: setDashSelectedCalories,
                 selectedServings: dashSelectedServings,
                 setSelectedServings: setDashSelectedServings,
+                selectedMealType: dashSelectedMealType,
+                setSelectedMealType: setDashSelectedMealType,
             }}
         >
             {/* Global Badge Unlock Notification Toaster */}
