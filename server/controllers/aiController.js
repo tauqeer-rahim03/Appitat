@@ -69,8 +69,28 @@ exports.getRecommendation = async (req, res) => {
         `;
 
         const result = await model.generateContent(prompt);
-        const text = result.response.text().replace(/```json|```/g, "").trim();
-        const recipes = JSON.parse(text).recipes;
+        let rawText = result.response.text().replace(/```json|```/g, "").trim();
+        
+        // Robust JSON extraction to ignore any trailing conversational text
+        let startIndex = rawText.indexOf('{');
+        let braceCount = 0;
+        let endIndex = -1;
+        for (let i = startIndex; i < rawText.length; i++) {
+            if (rawText[i] === '{') braceCount++;
+            else if (rawText[i] === '}') braceCount--;
+            
+            if (braceCount === 0 && startIndex !== -1) {
+                endIndex = i;
+                break;
+            }
+        }
+        
+        let jsonStr = rawText;
+        if (startIndex !== -1 && endIndex !== -1) {
+            jsonStr = rawText.substring(startIndex, endIndex + 1);
+        }
+
+        const recipes = JSON.parse(jsonStr).recipes;
 
         res.status(200).json({
             message: "Smart recipes generated!",
