@@ -9,7 +9,7 @@ connectDB();
 
 app.use(
     cors({
-        origin: "https://appitat.netlify.app",
+        origin: process.env.FRONTEND_URL || "https://appitat.netlify.app",
         credentials: true,
         methods: ["GET", "POST", "PUT", "DELETE"],
     }),
