@@ -1,9 +1,0 @@
-﻿
-C:\Users\DELL\OneDrive\Desktop\git-demo\ai-recipe-recommender\Ai-recipe-recommender\frontend\src\pages\DashboardPage.jsx
-  297:8  warning  React Hook useCallback has unnecessary dependencies: 'selectedCalories' and 'toggleSave'. Either exclude them or remove the dependency array  react-hooks/exhaustive-deps
-
-C:\Users\DELL\OneDrive\Desktop\git-demo\ai-recipe-recommender\Ai-recipe-recommender\frontend\src\pages\HeroPage.jsx
-  6:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
-
-Ô£û 2 problems (1 error, 1 warning)
-
