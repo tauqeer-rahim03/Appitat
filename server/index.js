@@ -9,9 +9,11 @@ connectDB();
 
 app.use(
     cors({
-        origin: process.env.FRONTEND_URL || "https://appitat.netlify.app",
-        credentials: true,
-        methods: ["GET", "POST", "PUT", "DELETE"],
+        origin: [
+            process.env.FRONTEND_URL,       
+            "https://appitat.netlify.app",
+            "http://localhost:5173",
+        ].filter(Boolean),
     }),
 );
 app.use(express.json({ limit: "10mb" }));
