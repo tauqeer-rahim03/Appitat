@@ -620,7 +620,7 @@ This project was collaboratively built by:
 <table>
   <tr>
   <td align="center">
-      <a href="https://github.com/TauqeerRahim">
+      <a href="https://github.com/tauqeer-rahim03">
         <img src="https://img.shields.io/badge/Tauqeer_Rahim-181717?style=for-the-badge&logo=github&logoColor=white" alt="Tauqeer Rahim"/>
       </a>
       <br />
