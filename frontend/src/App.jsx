@@ -70,6 +70,14 @@ export default function App() {
         fetchProfile();
     }, []);
 
+    // Wake up the Render server on first load (free tier spins down after inactivity)
+    useEffect(() => {
+        fetch('https://appitat.onrender.com')
+            .then(() => console.log("Server wake-up signal sent"))
+            .catch((err) => console.error("Wake-up failed", err));
+    }, []);
+
+
     const handleNavigate = (path, data) => {
         if (data) setCurrentRecipe(data);
         if (path === "hero" && user) {
