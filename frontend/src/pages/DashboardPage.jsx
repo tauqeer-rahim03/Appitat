@@ -206,7 +206,7 @@ export default function DashboardPage() {
                     <IngredientManager />
 
                     {/* AI Time-Based Quote Section */}
-                    <div className="mt-8 md:mt-12 mb-2 md:mb-8 px-0 md:px-0">
+                    <div className="mt-8 lg:mt-6 mb-2 lg:mb-0 px-0">
                         <div className="relative p-5 md:p-8 rounded-2xl md:rounded-3xl bg-gradient-to-br from-brand-primary/5 to-brand-secondary/5 border border-brand-primary/10 overflow-hidden group">
                             <div className="absolute -right-4 -top-4 text-brand-primary/5 opacity-20 group-hover:scale-110 transition-transform duration-700">
                                 <FaUtensils size={120} />
@@ -294,7 +294,7 @@ export default function DashboardPage() {
                 </div>
 
                 {/* --- 3. MAIN CONTENT: RECIPES (Scrolls under left column on desktop) --- */}
-                <div className="order-3 lg:col-span-7 lg:col-start-1 lg:row-start-2 mt-4 md:mt-8 pb-24 md:pb-20 -mx-4 px-4 md:-mx-6 md:px-6 lg:mx-0 lg:px-0">
+                <div className="order-3 lg:col-span-7 lg:col-start-1 lg:row-start-2 mt-4 lg:mt-0 pb-24 md:pb-20 -mx-4 px-4 md:-mx-6 md:px-6 lg:mx-0 lg:px-0">
                     {(stream || loading) && (
                         <div className="slide-up ai-response-container p-5 mb-7 flex items-start gap-3">
                             <div
