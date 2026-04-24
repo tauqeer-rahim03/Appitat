@@ -12,6 +12,12 @@
 
 > _"Tell us what's in your fridge — our AI finds the perfect recipe from your ingredients every single time."_
 
+<p align="center">
+  <a href="https://appitat.vercel.app" target="_blank">
+    <img src="https://img.shields.io/badge/🌐_Live_Demo-appitat.vercel.app-FF6B35?style=for-the-badge" alt="Live Demo"/>
+  </a>
+</p>
+
 ---
 
 ## 📑 Table of Contents
