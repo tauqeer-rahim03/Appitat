@@ -61,7 +61,7 @@ export default function RecipeDetailPage({ recipe }) {
     };
 
     return (
-        <div className="min-h-screen bg-brand-bg">
+        <div className="min-h-screen bg-brand-bg has-bottom-nav">
             <div className="h-1.5" style={{ background: accent }} />
             <div className="max-w-[1000px] mx-auto px-6 py-12">
                 <button
@@ -78,10 +78,10 @@ export default function RecipeDetailPage({ recipe }) {
                             background: `linear-gradient(135deg, ${accent}22, ${accent}08)`,
                         }}
                     >
-                        <div className="flex items-start justify-between gap-5 flex-wrap">
-                            <div className="flex gap-5 items-center">
+                        <div className="flex items-start justify-between gap-4 md:gap-5 flex-wrap">
+                            <div className="flex gap-4 md:gap-5 items-center">
                                 <div
-                                    className="w-[88px] h-[88px] rounded-[22px] flex items-center justify-center text-5xl shrink-0"
+                                    className="w-[68px] h-[68px] md:w-[88px] md:h-[88px] rounded-[18px] md:rounded-[22px] flex items-center justify-center text-4xl md:text-5xl shrink-0"
                                     style={{
                                         background: accent + "33",
                                         color: accent,
@@ -117,7 +117,8 @@ export default function RecipeDetailPage({ recipe }) {
                                     </div>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-3">
+                            {/* Desktop action buttons */}
+                            <div className="hidden md:flex items-center gap-3">
                                 <button
                                     className="flex items-center gap-2 border-2 rounded-xl px-4 py-2.5 cursor-pointer font-bold text-sm transition-all duration-200"
                                     style={{
@@ -224,6 +225,33 @@ export default function RecipeDetailPage({ recipe }) {
                         </div>
                     </div>
                 </div>
+            </div>
+
+            {/* Mobile Sticky Action Bar */}
+            <div className="md:hidden fixed bottom-[72px] left-0 right-0 bg-brand-card/95 backdrop-blur-xl border-t border-brand-primary/10 p-3 flex gap-3 z-40 pb-safe">
+                <button
+                    className="flex-1 flex items-center justify-center gap-2 border-2 rounded-xl px-4 py-3 cursor-pointer font-bold text-sm transition-all duration-200 active:scale-[0.97]"
+                    style={{
+                        background: isSaved ? accent : "var(--color-brand-card)",
+                        color: isSaved ? "var(--color-brand-bg)" : accent,
+                        borderColor: accent,
+                    }}
+                    onClick={() => toggleSave(recipe)}
+                >
+                    {isSaved ? <><FaHeart className="text-white" /> Saved</> : <><FiHeart /> Save</>}
+                </button>
+                <button
+                    className={`flex-1 flex items-center justify-center gap-2 border-2 rounded-xl px-4 py-3 font-bold text-sm transition-all duration-200 ${isCooked ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer active:scale-[0.97]'}`}
+                    style={{
+                        background: isCooked ? 'var(--color-brand-primary)' : accent,
+                        color: "var(--color-brand-bg)",
+                        borderColor: isCooked ? 'var(--color-brand-primary)' : accent,
+                    }}
+                    onClick={handleCooked}
+                    disabled={isCooked}
+                >
+                    {isCooked ? <><FaCheck /> Cooked!</> : <><FaCheck /> I Made This!</>}
+                </button>
             </div>
 
             {/* XP Toast Celebration */}

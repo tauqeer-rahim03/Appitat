@@ -27,7 +27,7 @@ export default function SavedPage() {
     }
 
     return (
-        <div className="min-h-screen bg-brand-bg px-6 py-8 md:py-12">
+        <div className="min-h-screen bg-brand-bg px-4 md:px-6 py-6 md:py-12 has-bottom-nav">
             <div className="max-w-[1200px] mx-auto">
                 <h1 className="serif slide-up text-[clamp(26px,4vw,42px)] font-black text-brand-primary mb-2 flex items-center gap-2">
                     Your Cookbook{" "}
@@ -51,7 +51,7 @@ export default function SavedPage() {
                         </button>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-6">
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4 md:gap-6">
                         {saved.map((r, i) => (
                             <RecipeCard
                                 key={r.id}

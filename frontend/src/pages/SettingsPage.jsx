@@ -134,7 +134,7 @@ export default function SettingsPage() {
     };
 
     return (
-        <div className="min-h-screen bg-brand-bg pb-20">
+        <div className="min-h-screen bg-brand-bg pb-4 md:pb-20 has-bottom-nav">
             {/* Header / Cover Area */}
             <div
                 className="relative px-6 py-10 md:py-16 border-b-[4px] border-brand-secondary group transition-colors"
@@ -212,7 +212,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Editing Forms */}
-            <div className="max-w-[1000px] mx-auto px-6 mt-8">
+            <div className="max-w-[1000px] mx-auto px-4 md:px-6 mt-6 md:mt-8">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* Basic Info Card */}
                     <div className="card rounded-card p-6 slide-up">
@@ -281,10 +281,21 @@ export default function SettingsPage() {
                     </div>
                 </div>
 
-                {/* Global Save Button */}
-                <div className="mt-12 flex justify-center slide-up">
+                {/* Desktop Save Button */}
+                <div className="mt-12 hidden md:flex justify-center slide-up">
                     <button
                         className="btn-primary px-12 py-4 rounded-xl text-[16px] shadow-xl hover:scale-105 transition-transform disabled:opacity-50 disabled:scale-100"
+                        onClick={handleSave}
+                        disabled={isSaving}
+                    >
+                        {isSaving ? "Saving..." : "Save Profile Changes"}
+                    </button>
+                </div>
+
+                {/* Mobile Sticky Save Bar */}
+                <div className="md:hidden fixed bottom-[72px] left-0 right-0 bg-brand-card/95 backdrop-blur-xl border-t border-brand-primary/10 p-3 z-40 pb-safe">
+                    <button
+                        className="w-full h-[50px] bg-brand-secondary text-white rounded-xl font-bold text-[15px] shadow-md disabled:opacity-50 active:scale-[0.98] transition-all cursor-pointer"
                         onClick={handleSave}
                         disabled={isSaving}
                     >

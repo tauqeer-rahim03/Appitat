@@ -134,7 +134,7 @@ export default function AuthPage({ mode }) {
                 </div>
             </div>
 
-            <div className="slide-up bg-brand-card rounded-3xl p-10 md:p-12 w-full max-w-[420px] shadow-2xl relative z-10">
+            <div className="slide-up bg-brand-card rounded-2xl md:rounded-3xl p-7 md:p-12 w-full max-w-[420px] shadow-2xl relative z-10">
                 <div
                     className="mb-7 inline-flex items-center gap-1.5 group cursor-default"
                     onClick={() => navigate("hero")}
@@ -163,7 +163,7 @@ export default function AuthPage({ mode }) {
                                 Full Name
                             </label>
                             <input
-                                className="input-field px-3.5 py-2.5 rounded-[10px] text-sm"
+                                className="input-field px-3.5 py-3 md:py-2.5 rounded-[10px] text-sm"
                                 placeholder="Your name"
                                 value={form.name}
                                 onChange={(e) =>
@@ -178,7 +178,7 @@ export default function AuthPage({ mode }) {
                             Email
                         </label>
                         <input
-                            className="input-field px-3.5 py-2.5 rounded-[10px] text-sm"
+                            className="input-field px-3.5 py-3 md:py-2.5 rounded-[10px] text-sm"
                             type="email"
                             placeholder="you@example.com"
                             value={form.email}
@@ -193,7 +193,7 @@ export default function AuthPage({ mode }) {
                         </label>
                         <div className="relative">
                             <input
-                                className="input-field px-3.5 py-2.5 rounded-[10px] text-sm w-full pr-10"
+                                className="input-field px-3.5 py-3 md:py-2.5 rounded-[10px] text-sm w-full pr-10"
                                 type={showPassword ? "text" : "password"}
                                 placeholder="••••••••"
                                 value={form.password}
@@ -219,7 +219,7 @@ export default function AuthPage({ mode }) {
                         </p>
                     )}
                     <button
-                        className="btn-primary w-full py-3.5 rounded-[11px] text-[15px]"
+                        className="btn-primary w-full py-4 md:py-3.5 rounded-[11px] text-[15px]"
                         type="submit"
                         disabled={loading}
                     >

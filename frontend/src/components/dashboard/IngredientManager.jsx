@@ -105,14 +105,15 @@ export default function IngredientManager() {
     };
 
     return (
-        <div className="bg-brand-card rounded-3xl p-6 lg:p-8 shadow-2xl shadow-brand-primary/10 border-2 border-brand-primary/20 border-solid mb-8">
+        <div className="bg-brand-card rounded-2xl md:rounded-3xl p-4 md:p-6 lg:p-8 shadow-2xl shadow-brand-primary/10 border-2 border-brand-primary/20 border-solid mb-6 md:mb-8">
             <form onSubmit={addIngredient}>
-                <div className="flex flex-col md:flex-row gap-4 mb-6">
+                <div className="flex flex-col gap-3 md:gap-4 mb-4 md:mb-6">
+                    <div className="flex flex-col md:flex-row gap-3 md:gap-4">
                     <div className="flex-1 relative group">
                         <input
                             type="text"
                             placeholder="Ingredient name (e.g. Garlic)"
-                            className="w-full bg-brand-bg/80 border-2 border-brand-primary/20 rounded-2xl px-5 py-4 text-brand-primary font-bold focus:border-brand-secondary focus:ring-4 focus:ring-brand-secondary/10 outline-none transition-all placeholder:text-brand-primary/40 shadow-sm"
+                            className="w-full bg-brand-bg/80 border-2 border-brand-primary/20 rounded-xl md:rounded-2xl px-4 md:px-5 py-3.5 md:py-4 text-brand-primary font-bold focus:border-brand-secondary focus:ring-4 focus:ring-brand-secondary/10 outline-none transition-all placeholder:text-brand-primary/40 shadow-sm"
                             value={ingredientInput}
                             onChange={(e) => setIngredientInput(e.target.value)}
                         />
@@ -121,14 +122,16 @@ export default function IngredientManager() {
                         <input
                             type="text"
                             placeholder="Qty (e.g. 500g)"
-                            className="w-full bg-brand-bg/80 border-2 border-brand-primary/20 rounded-2xl px-5 py-4 text-brand-primary font-bold focus:border-brand-secondary focus:ring-4 focus:ring-brand-secondary/10 outline-none transition-all placeholder:text-brand-primary/40 shadow-sm"
+                            className="w-full bg-brand-bg/80 border-2 border-brand-primary/20 rounded-xl md:rounded-2xl px-4 md:px-5 py-3.5 md:py-4 text-brand-primary font-bold focus:border-brand-secondary focus:ring-4 focus:ring-brand-secondary/10 outline-none transition-all placeholder:text-brand-primary/40 shadow-sm"
                             value={qtyInput}
                             onChange={(e) => setQtyInput(e.target.value)}
                         />
                     </div>
+                    </div>
+                    <div className="flex gap-3">
                     <button
                         type="submit"
-                        className="bg-brand-primary text-white px-6 rounded-2xl hover:bg-brand-primary/90 hover:scale-105 active:scale-95 transition-all flex items-center justify-center cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed group shadow-lg shadow-brand-primary/20"
+                        className="bg-brand-primary text-white px-6 min-h-[48px] rounded-xl md:rounded-2xl hover:bg-brand-primary/90 active:scale-95 transition-all flex items-center justify-center cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed group shadow-lg shadow-brand-primary/20 flex-1 md:flex-none"
                         style={{ minWidth: "64px" }}
                         disabled={!ingredientInput.trim() && imageInputs.length === 0}
                     >
@@ -145,11 +148,12 @@ export default function IngredientManager() {
                         />
                         <label
                             htmlFor="ingredient-image"
-                            className="h-full bg-brand-bg border-2 border-brand-primary/20 rounded-2xl px-6 py-4 flex items-center gap-3 cursor-pointer hover:border-brand-secondary hover:text-brand-secondary hover:bg-brand-secondary/5 transition-all text-brand-primary font-bold group shadow-sm"
+                            className="h-full min-h-[48px] bg-brand-bg border-2 border-brand-primary/20 rounded-xl md:rounded-2xl px-5 md:px-6 py-3 md:py-4 flex items-center gap-2 md:gap-3 cursor-pointer hover:border-brand-secondary hover:text-brand-secondary hover:bg-brand-secondary/5 transition-all text-brand-primary font-bold group shadow-sm"
                         >
                             <FiCamera size={22} className="group-hover:scale-110 transition-transform" />
                             <span className="hidden sm:inline">Add Photo</span>
                         </label>
+                    </div>
                     </div>
                 </div>
 
@@ -173,8 +177,8 @@ export default function IngredientManager() {
                     </div>
                 )}
 
-                <div className="flex flex-wrap items-center gap-3">
-                    <span className="text-[12px] font-black text-brand-primary/40 uppercase tracking-widest mr-2">
+                <div className="flex items-center gap-2 md:gap-3 overflow-x-auto hide-scrollbar pb-1 -mx-1 px-1">
+                    <span className="text-[11px] md:text-[12px] font-black text-brand-primary/40 uppercase tracking-widest mr-1 md:mr-2 whitespace-nowrap shrink-0">
                         QUICK ADD:
                     </span>
                     {QUICK_ADD_INGREDIENTS.map((ing) => (
@@ -182,7 +186,7 @@ export default function IngredientManager() {
                             key={ing}
                             type="button"
                             onClick={() => handleAddQuickIngredient(ing)}
-                            className="px-4 py-1.5 rounded-full border border-brand-primary/10 text-[13px] font-bold text-brand-primary/60 hover:border-brand-secondary hover:text-brand-secondary hover:bg-brand-secondary/5 transition-all cursor-pointer"
+                            className="px-3 md:px-4 py-2 md:py-1.5 rounded-full border border-brand-primary/10 text-[12px] md:text-[13px] font-bold text-brand-primary/60 hover:border-brand-secondary hover:text-brand-secondary hover:bg-brand-secondary/5 transition-all cursor-pointer whitespace-nowrap shrink-0 min-h-[36px] active:scale-95"
                         >
                             + {ing}
                         </button>

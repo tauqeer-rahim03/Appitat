@@ -107,14 +107,14 @@ export default function HeroPage() {
                             <br />
                             Eat with <em className="italic">joy.</em>
                         </h1>
-                        <p className="slide-up stagger-2 text-lg text-brand-primary/80 leading-relaxed mb-10 max-w-[460px]">
+                        <p className="slide-up stagger-2 text-base md:text-lg text-brand-primary/80 leading-relaxed mb-8 md:mb-10 max-w-[460px]">
                             Tell us what's in your fridge or pantry — our AI
                             finds the perfect recipe from your ingredients every
                             single time.
                         </p>
                         <div className="slide-up stagger-3 flex flex-col sm:flex-row gap-4 flex-wrap">
                             <button
-                                className="btn-primary w-full sm:w-auto px-10 py-4 rounded-button text-[16px] font-bold shadow-lg hover:shadow-xl transition-shadow pulse-glow"
+                                className="btn-primary w-full sm:w-auto px-8 md:px-10 py-4 rounded-button text-[15px] md:text-[16px] font-bold shadow-lg hover:shadow-xl transition-shadow pulse-glow active:scale-[0.97]"
                                 onClick={() =>
                                     navigate(user ? "dashboard" : "signup")
                                 }
@@ -122,7 +122,7 @@ export default function HeroPage() {
                                 Start Cooking Free →
                             </button>
                             <button
-                                className="btn-ghost w-full sm:w-auto px-10 py-4 rounded-button text-[16px] font-bold bg-brand-card/50 backdrop-blur-sm shadow-sm"
+                                className="btn-ghost w-full sm:w-auto px-8 md:px-10 py-4 rounded-button text-[15px] md:text-[16px] font-bold bg-brand-card/50 backdrop-blur-sm shadow-sm active:scale-[0.97]"
                                 onClick={() => navigate("dashboard")}
                             >
                                 Browse Recipes
@@ -135,7 +135,7 @@ export default function HeroPage() {
                         {RECIPES.slice(0, 3).map((r, i) => (
                             <div
                                 key={r.id}
-                                className="glass-card p-4 flex items-center gap-4 w-full max-w-[420px] hover:-translate-y-1 transition-transform"
+                                className="glass-card p-3 md:p-4 flex items-center gap-3 md:gap-4 w-full max-w-[420px] hover:-translate-y-1 transition-transform active:scale-[0.98]"
                                 style={{
                                     opacity: 0,
                                     animation: `slideUp 0.6s ease-out ${0.4 + i * 0.15}s forwards`,

@@ -168,137 +168,41 @@ export default function Navbar() {
                                 )}
                             </div>
                         )}
-                    </div>
-
-                    {/* --- MOBILE HAMBURGER BUTTON --- */}
-                    <button
-                        className="md:hidden text-2xl text-brand-primary p-2 -mr-2 cursor-pointer transition-transform duration-200"
-                        onClick={() => setMenuOpen(!menuOpen)}
-                    >
-                        {menuOpen ? <FiX /> : <FiMenu />}
-                    </button>
                 </div>
 
-                {/* --- MOBILE DROPDOWN MENU --- */}
-                <div
-                    className={`md:hidden absolute top-[60px] left-0 right-0 bg-brand-bg/95 backdrop-blur-xl border-b border-brand-primary/10 p-6 flex flex-col gap-5 shadow-xl max-h-[calc(100vh-60px)] overflow-y-auto z-40 transition-all duration-300 origin-top
-                ${menuOpen ? "opacity-100 scale-y-100" : "opacity-0 scale-y-0 pointer-events-none"}`}
-                >
-                    <div className="flex flex-col gap-4 mb-2">
+                    {/* --- MOBILE: Simple logo + theme only, nav handled by MobileBottomNav --- */}
+                    <div className="md:hidden flex items-center gap-2">
                         {user && (
                             <button
-                                className={`flex items-center gap-3 text-base font-medium py-3 px-2 border-b border-brand-primary/10 rounded-lg transition-colors text-left ${
-                                    location.pathname === "/dashboard"
-                                        ? "text-brand-secondary bg-brand-primary/5 border-transparent"
-                                        : "text-brand-primary hover:bg-brand-primary/5"
-                                }`}
-                                onClick={() => {
-                                    setMenuOpen(false);
-                                    navigate("dashboard");
-                                }}
+                                onClick={toggleTheme}
+                                className="flex items-center justify-center p-2 rounded-xl bg-brand-primary/5 border border-brand-primary/10 text-brand-primary transition-colors cursor-pointer"
+                                aria-label="Toggle theme"
                             >
-                                <FiSearch
-                                    className={`text-xl stroke-[2.5] ${location.pathname === "/dashboard" ? "text-brand-secondary" : "text-brand-secondary/80"}`}
-                                />{" "}
-                                Discover
+                                <div key={theme} className="book-animate flex items-center justify-center">
+                                    {theme === "dark" ? (
+                                        <FiBook className="text-lg stroke-[2.5]" />
+                                    ) : (
+                                        <FiBookOpen className="text-lg stroke-[2.5]" />
+                                    )}
+                                </div>
                             </button>
                         )}
-                        {user && (
-                            <button
-                                className={`flex items-center gap-3 text-base font-medium py-3 px-2 border-b border-brand-primary/10 rounded-lg transition-colors text-left ${
-                                    location.pathname === "/saved"
-                                        ? "text-brand-secondary bg-brand-primary/5 border-transparent"
-                                        : "text-brand-primary hover:bg-brand-primary/5"
-                                }`}
-                                onClick={() => {
-                                    setMenuOpen(false);
-                                    navigate("saved");
-                                }}
-                            >
-                                <FiHeart
-                                    className={`text-xl stroke-[2.5] ${location.pathname === "/saved" ? "text-brand-secondary" : "text-brand-secondary/80"}`}
-                                />{" "}
-                                Saved
-                            </button>
-                        )}
-                        {user && (
-                            <button
-                                className={`flex items-center gap-3 text-base font-medium py-3 px-2 rounded-lg transition-colors text-left ${
-                                    location.pathname === "/account"
-                                        ? "text-brand-secondary bg-brand-primary/5"
-                                        : "text-brand-primary hover:bg-brand-primary/5"
-                                }`}
-                                onClick={() => {
-                                    setMenuOpen(false);
-                                    navigate("account");
-                                }}
-                            >
-                                <FiUser
-                                    className={`text-xl stroke-[2.5] ${location.pathname === "/account" ? "text-brand-secondary" : "text-brand-secondary/80"}`}
-                                />{" "}
-                                Account
-                            </button>
-                        )}
-                    </div>
-
-                    {!user ? (
-                        <div className="flex flex-col gap-3">
-                            <button
-                                className="bg-brand-secondary text-white w-full py-4 rounded-xl text-[15px] font-bold shadow-md active:scale-[0.98] transition-all"
-                                onClick={() => {
-                                    setMenuOpen(false);
-                                    navigate("signup");
-                                }}
-                            >
-                                Sign Up
-                            </button>
-                            <button
-                                className="bg-transparent text-brand-primary w-full py-4 rounded-xl text-[15px] font-bold border-2 border-brand-primary/20 active:scale-[0.98] transition-all"
-                                onClick={() => {
-                                    setMenuOpen(false);
-                                    navigate("login");
-                                }}
-                            >
-                                Log In
-                            </button>
-                        </div>
-                    ) : (
-                        <div className="pt-2">
-                            <button
-                                className="w-full bg-brand-accent/10 py-4 rounded-xl text-[15px] font-bold flex items-center justify-center gap-2.5 text-brand-accent border border-brand-accent/20 hover:bg-brand-accent hover:text-white transition-colors active:scale-[0.98]"
-                                onClick={() => {
-                                    setMenuOpen(false);
-                                    setShowLogoutConfirm(true);
-                                }}
-                            >
-                                <FiLogOut className="text-xl stroke-[2.5]" />
-                                Sign Out
-                            </button>
-                        </div>
-                    )}
-
-                    <div className="pt-2 border-t border-brand-primary/10 mt-2 flex justify-center">
-                        <button
-                            onClick={toggleTheme}
-                            className="flex items-center gap-2 p-3 rounded-xl text-brand-primary hover:bg-brand-primary/10 transition-colors w-full justify-center font-medium group"
-                        >
-                            <div
-                                key={theme}
-                                className="book-animate flex items-center justify-center"
-                            >
-                                {theme === "dark" ? (
-                                    <>
-                                        <FiBook className="text-xl stroke-[2.5] mr-2" />
-                                        Dark Mode
-                                    </>
-                                ) : (
-                                    <>
-                                        <FiBookOpen className="text-xl stroke-[2.5] mr-2" />
-                                        Light Mode
-                                    </>
-                                )}
+                        {!user && (
+                            <div className="flex gap-2">
+                                <button
+                                    className="btn-ghost px-3 py-1.5 rounded-lg text-[12px] cursor-pointer"
+                                    onClick={() => navigate("login")}
+                                >
+                                    Log In
+                                </button>
+                                <button
+                                    className="btn-primary px-3 py-1.5 rounded-lg text-[12px] cursor-pointer"
+                                    onClick={() => navigate("signup")}
+                                >
+                                    Sign Up
+                                </button>
                             </div>
-                        </button>
+                        )}
                     </div>
                 </div>
             </nav>

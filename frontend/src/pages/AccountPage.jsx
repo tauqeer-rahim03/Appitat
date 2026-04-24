@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useApp } from "../context/AppContext";
-import { FiClock, FiHeart, FiUser, FiEdit2, FiAward } from "react-icons/fi";
+import { FiClock, FiHeart, FiUser, FiEdit2, FiAward, FiLogOut } from "react-icons/fi";
 import { FaFire } from "react-icons/fa";
 import { RECIPES } from "../data/constants";
 import { AccountPersonalizationCard } from "../components/AccountPersonalizationCard";
@@ -9,7 +9,8 @@ import { AccountBadgesCard } from "../components/AccountBadgesCard";
 import { resolvePic } from "../lib/utils";
 
 export default function AccountPage() {
-    const { user, saved, toggleSave, navigate } = useApp();
+    const { user, saved, toggleSave, navigate, logout } = useApp();
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
     const [activeTab, setActiveTab] = useState("cookbook");
 
@@ -51,10 +52,10 @@ export default function AccountPage() {
     }
 
     return (
-        <div className="min-h-screen bg-brand-bg">
+        <div className="min-h-screen bg-brand-bg has-bottom-nav">
             {/* Header Section */}
             <div
-                className="relative px-6 py-10 md:py-16 text-center border-b-[4px] border-brand-secondary"
+                className="relative px-4 md:px-6 py-8 md:py-16 text-center border-b-[4px] border-brand-secondary"
                 style={{
                     backgroundColor: user.coverPic
                         ? "transparent"
@@ -78,7 +79,7 @@ export default function AccountPage() {
                         </span>
                     </button>
 
-                    <div className="w-[80px] h-[80px] md:w-[100px] md:h-[100px] rounded-full bg-brand-secondary text-white flex items-center justify-center font-black text-[32px] md:text-[40px] shadow-xl mb-4 border-4 border-brand-bg/20 overflow-hidden relative mt-8 md:mt-2">
+                    <div className="w-[72px] h-[72px] md:w-[100px] md:h-[100px] rounded-full bg-brand-secondary text-white flex items-center justify-center font-black text-[28px] md:text-[40px] shadow-xl mb-3 md:mb-4 border-4 border-brand-bg/20 overflow-hidden relative mt-6 md:mt-2">
                         {user.profilePic ? (
                             <img
                                 src={resolvePic(user.profilePic)}
@@ -91,7 +92,7 @@ export default function AccountPage() {
                     </div>
 
                     <div className="slide-up">
-                        <h1 className="serif text-[32px] md:text-[44px] font-black text-brand-bg mb-1 flex items-center justify-center gap-3">
+                        <h1 className="serif text-[26px] md:text-[44px] font-black text-brand-bg mb-1 flex items-center justify-center gap-3">
                             {user.name || user.email?.split("@")[0] || "User"}
                         </h1>
                         <p className="text-brand-bg/70 text-[14px] md:text-[15px] flex items-center justify-center gap-2">
@@ -108,27 +109,27 @@ export default function AccountPage() {
 
             {/* Tab Navigation */}
             <div className="max-w-[1400px] mx-auto px-6 mt-6 md:mt-8">
-                <div className="flex gap-4 border-b border-brand-primary/10 pb-4 overflow-x-auto slide-up hide-scrollbar">
+                <div className="flex gap-2 md:gap-4 border-b border-brand-primary/10 pb-4 overflow-x-auto slide-up hide-scrollbar -mx-2 px-2">
                     <button
-                        className={`text-sm font-bold uppercase tracking-wider px-5 py-2.5 rounded-xl whitespace-nowrap transition-all ${activeTab === "cookbook" ? "bg-brand-primary text-brand-bg shadow-md" : "text-brand-primary/60 hover:bg-brand-primary/5 hover:text-brand-primary"}`}
+                        className={`text-[12px] md:text-sm font-bold uppercase tracking-wider px-4 md:px-5 py-2.5 rounded-xl whitespace-nowrap transition-all shrink-0 min-h-[40px] active:scale-95 ${activeTab === "cookbook" ? "bg-brand-primary text-brand-bg shadow-md" : "text-brand-primary/60 hover:bg-brand-primary/5 hover:text-brand-primary"}`}
                         onClick={() => setActiveTab("cookbook")}
                     >
                         My Cookbook
                     </button>
                     <button
-                        className={`text-sm font-bold uppercase tracking-wider px-5 py-2.5 rounded-xl whitespace-nowrap transition-all ${activeTab === "preferences" ? "bg-brand-primary text-brand-bg shadow-md" : "text-brand-primary/60 hover:bg-brand-primary/5 hover:text-brand-primary"}`}
+                        className={`text-[12px] md:text-sm font-bold uppercase tracking-wider px-4 md:px-5 py-2.5 rounded-xl whitespace-nowrap transition-all shrink-0 min-h-[40px] active:scale-95 ${activeTab === "preferences" ? "bg-brand-primary text-brand-bg shadow-md" : "text-brand-primary/60 hover:bg-brand-primary/5 hover:text-brand-primary"}`}
                         onClick={() => setActiveTab("preferences")}
                     >
                         Preferences & AI
                     </button>
                     <button
-                        className={`text-sm font-bold uppercase tracking-wider px-5 py-2.5 rounded-xl whitespace-nowrap transition-all ${activeTab === "badges" ? "bg-brand-primary text-brand-bg shadow-md" : "text-brand-primary/60 hover:bg-brand-primary/5 hover:text-brand-primary"}`}
+                        className={`text-[12px] md:text-sm font-bold uppercase tracking-wider px-4 md:px-5 py-2.5 rounded-xl whitespace-nowrap transition-all shrink-0 min-h-[40px] active:scale-95 ${activeTab === "badges" ? "bg-brand-primary text-brand-bg shadow-md" : "text-brand-primary/60 hover:bg-brand-primary/5 hover:text-brand-primary"}`}
                         onClick={() => setActiveTab("badges")}
                     >
                         Badges
                     </button>
                     <button
-                        className={`text-sm font-bold uppercase tracking-wider px-5 py-2.5 rounded-xl whitespace-nowrap transition-all ${activeTab === "history" ? "bg-brand-primary text-brand-bg shadow-md" : "text-brand-primary/60 hover:bg-brand-primary/5 hover:text-brand-primary"}`}
+                        className={`text-[12px] md:text-sm font-bold uppercase tracking-wider px-4 md:px-5 py-2.5 rounded-xl whitespace-nowrap transition-all shrink-0 min-h-[40px] active:scale-95 ${activeTab === "history" ? "bg-brand-primary text-brand-bg shadow-md" : "text-brand-primary/60 hover:bg-brand-primary/5 hover:text-brand-primary"}`}
                         onClick={() => setActiveTab("history")}
                     >
                         History
@@ -136,7 +137,7 @@ export default function AccountPage() {
                 </div>
             </div>
 
-            <div className="max-w-[1400px] mx-auto px-6 py-8 md:py-12 min-h-[50vh]">
+            <div className="max-w-[1400px] mx-auto px-4 md:px-6 py-6 md:py-12 min-h-[50vh]">
                 {activeTab === "preferences" && (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
                         {/* Summary Card */}
@@ -395,7 +396,49 @@ export default function AccountPage() {
                         )}
                     </div>
                 )}
+
+                {/* Sign Out Section (mobile-friendly) */}
+                <div className="mt-12 mb-4 flex justify-center">
+                    <button
+                        className="flex items-center gap-2.5 px-6 py-3.5 rounded-xl text-[14px] font-bold text-brand-accent/80 bg-brand-accent/5 border border-brand-accent/15 hover:bg-brand-accent hover:text-white transition-all active:scale-[0.97] cursor-pointer"
+                        onClick={() => setShowLogoutConfirm(true)}
+                    >
+                        <FiLogOut className="text-lg stroke-[2.5]" />
+                        Sign Out
+                    </button>
+                </div>
             </div>
+
+            {/* Logout Confirmation Modal */}
+            {showLogoutConfirm && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-6">
+                    <div className="bg-brand-bg rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-brand-primary/10 sheet-enter">
+                        <h3 className="serif text-xl font-black text-brand-primary mb-2">
+                            Sign Out?
+                        </h3>
+                        <p className="text-brand-primary/70 text-sm leading-relaxed mb-6">
+                            Are you sure you want to sign out of your account?
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                className="flex-1 py-3 rounded-xl text-sm font-bold text-brand-primary/60 bg-brand-primary/5 hover:bg-brand-primary/10 transition-colors active:scale-[0.97] cursor-pointer"
+                                onClick={() => setShowLogoutConfirm(false)}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                className="flex-1 py-3 rounded-xl text-sm font-bold bg-brand-accent text-white hover:bg-brand-accent/90 shadow-md transition-all active:scale-[0.97] cursor-pointer"
+                                onClick={() => {
+                                    setShowLogoutConfirm(false);
+                                    logout();
+                                }}
+                            >
+                                Sign Out
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

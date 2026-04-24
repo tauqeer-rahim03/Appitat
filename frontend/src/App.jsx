@@ -9,6 +9,7 @@ import {
 import { AppContext } from "./context/AppContext";
 import Navbar from "./components/Navbar";
 import BackToTopButton from "./components/BackToTopButton";
+import MobileBottomNav from "./components/MobileBottomNav";
 
 // Lazy-loaded routes for performance optimization
 const HeroPage = lazy(() => import("./pages/HeroPage"));
@@ -325,6 +326,7 @@ export default function App() {
             )}
 
             {showNav && <Navbar />}
+            {showNav && <MobileBottomNav />}
             <Suspense
                 fallback={
                     <div className="min-h-screen bg-brand-bg flex items-center justify-center">

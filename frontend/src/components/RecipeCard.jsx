@@ -6,7 +6,7 @@ const RecipeCardOuter = ({ r, index, isSaved, toggleSave, navigate }) => {
     const accent = r.accent || "#F5824A";
     return (
         <div
-            className="slide-up rounded-card overflow-hidden cursor-default flex flex-col bg-brand-card border border-brand-primary/10 transition-all duration-300 hover:-translate-y-[4px] hover:shadow-[0_14px_48px_rgba(37,79,34,0.18)]"
+            className="slide-up rounded-card overflow-hidden cursor-default flex flex-col bg-brand-card border border-brand-primary/10 transition-all duration-300 hover:-translate-y-[4px] hover:shadow-[0_14px_48px_rgba(37,79,34,0.18)] active:scale-[0.98]"
             style={{ animationDelay: `${index * 0.07}s` }}
         >
             {/* Accent bar + shimmer on hover */}
@@ -62,7 +62,7 @@ const RecipeCardOuter = ({ r, index, isSaved, toggleSave, navigate }) => {
                         </span>
                     </div>
                     <button
-                        className="flex items-center gap-1.5 text-sm font-bold cursor-pointer transition-all duration-200 group"
+                        className="flex items-center gap-1.5 text-sm font-bold cursor-pointer transition-all duration-200 group min-w-[44px] min-h-[44px] justify-center rounded-xl active:scale-90"
                         onClick={(e) => {
                             e.stopPropagation();
                             toggleSave(r);
