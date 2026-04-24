@@ -124,7 +124,7 @@ export default function DashboardPage() {
 
         try {
             const response = await aiAPI.getRecommendations({
-                ingredients: ingredients.map(i => i.name),
+                ingredients: ingredients.map((i) => i.name),
                 cuisine: selectedCuisines[0],
                 cookingTime: selectedTime,
                 dietaryType: selectedDiets[0],
@@ -144,7 +144,10 @@ export default function DashboardPage() {
         } catch (err) {
             console.error("AI Recommendation Error:", err);
             const errorMessage = err.response?.data?.message || err.message;
-            setStream("I'm sorry, I'm having trouble connecting to my creative kitchen: " + errorMessage);
+            setStream(
+                "I'm sorry, I'm having trouble connecting to my creative kitchen: " +
+                    errorMessage,
+            );
             setAiIntro("Connection issue.");
             setResults([]);
         }
@@ -197,33 +200,47 @@ export default function DashboardPage() {
                 </div>
             </div>
 
-            <div className="max-w-[1400px] flex flex-col lg:grid lg:grid-cols-12 gap-6 md:gap-8 lg:gap-12 lg:items-start mx-auto px-4 md:px-6 relative z-20 pb-40 md:pb-32 lg:pb-20 -mt-16 has-bottom-nav md:!pb-32 lg:!pb-20">
+            <div className="max-w-[1400px] flex flex-col lg:grid lg:grid-cols-12 gap-3 md:gap-8 lg:gap-12 lg:items-start mx-auto px-4 md:px-6 relative z-20 pb-40 md:pb-32 lg:pb-20 -mt-16 has-bottom-nav md:!pb-32 lg:!pb-20">
                 {/* --- 1. LEFT COLUMN: INGREDIENTS FORM --- */}
                 <div className="order-1 lg:col-span-7 lg:col-start-1">
                     <IngredientManager />
 
                     {/* AI Time-Based Quote Section */}
-                    <div className="mt-8 md:mt-12 mb-6 md:mb-8 px-0 md:px-0">
+                    <div className="mt-8 md:mt-12 mb-2 md:mb-8 px-0 md:px-0">
                         <div className="relative p-5 md:p-8 rounded-2xl md:rounded-3xl bg-gradient-to-br from-brand-primary/5 to-brand-secondary/5 border border-brand-primary/10 overflow-hidden group">
                             <div className="absolute -right-4 -top-4 text-brand-primary/5 opacity-20 group-hover:scale-110 transition-transform duration-700">
                                 <FaUtensils size={120} />
                             </div>
                             <div className="relative z-10">
                                 <span className="inline-block px-3 py-1 rounded-full bg-brand-secondary/10 text-brand-secondary text-[11px] font-black uppercase tracking-[0.2em] mb-4">
-                                    {new Date().getHours() < 11 ? "Morning Inspiration" : 
-                                     new Date().getHours() < 16 ? "Midday Fuel" : 
-                                     new Date().getHours() < 21 ? "Evening Comfort" : "Late Night Cravings"}
+                                    {new Date().getHours() < 11
+                                        ? "Morning Inspiration"
+                                        : new Date().getHours() < 16
+                                          ? "Midday Fuel"
+                                          : new Date().getHours() < 21
+                                            ? "Evening Comfort"
+                                            : "Late Night Cravings"}
                                 </span>
                                 <h3 className="serif text-[16px] md:text-[20px] lg:text-[24px] text-brand-primary italic leading-relaxed font-medium">
-                                    {new Date().getHours() < 11 ? "“Breakfast is where the day begins — simple ingredients, fresh energy, and a quiet kind of comfort.”" : 
-                                     new Date().getHours() < 15 ? "“A good lunch is a beautiful pause in the day, a chance to refuel and find joy in the middle of it all.”" :
-                                     new Date().getHours() < 18 ? "“The golden hour of the kitchen: where the day slows down and the aromas of dinner begin to rise.”" :
-                                     new Date().getHours() < 22 ? "“Dinner is the heart's way of saying the day was well spent. Share a plate, share a story.”" :
-                                     "“The quiet of the night makes every flavor sharper. A midnight snack is the soul's little secret.”"}
+                                    {new Date().getHours() < 11
+                                        ? "“Breakfast is where the day begins — simple ingredients, fresh energy, and a quiet kind of comfort.”"
+                                        : new Date().getHours() < 15
+                                          ? "“A good lunch is a beautiful pause in the day, a chance to refuel and find joy in the middle of it all.”"
+                                          : new Date().getHours() < 18
+                                            ? "“The golden hour of the kitchen: where the day slows down and the aromas of dinner begin to rise.”"
+                                            : new Date().getHours() < 22
+                                              ? "“Dinner is the heart's way of saying the day was well spent. Share a plate, share a story.”"
+                                              : "“The quiet of the night makes every flavor sharper. A midnight snack is the soul's little secret.”"}
                                 </h3>
                                 <div className="mt-4 flex items-center gap-2 text-brand-primary/40 font-bold text-[13px]">
                                     <div className="w-8 h-[1px] bg-brand-primary/20" />
-                                    <span>AI Inspired • {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                    <span>
+                                        AI Inspired •{" "}
+                                        {new Date().toLocaleTimeString([], {
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                        })}
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -231,7 +248,7 @@ export default function DashboardPage() {
                 </div>
 
                 {/* --- 2. RIGHT COLUMN: PREFERENCES (Sticky) --- */}
-                <div className="order-2 lg:order-none lg:col-span-5 lg:col-start-8 lg:row-start-1 lg:row-span-2 bg-brand-card lg:bg-transparent rounded-2xl lg:rounded-none border lg:border-none border-brand-primary/20 p-4 lg:p-0 shadow-sm lg:shadow-none mb-4 lg:mb-0 lg:sticky lg:top-[120px] lg:h-max">
+                <div className="order-2 lg:order-none lg:col-span-5 lg:col-start-8 lg:row-start-1 lg:row-span-2 lg:bg-transparent rounded-2xl lg:rounded-none lg:border-none lg:p-0 lg:shadow-none mb-0 lg:mb-0 lg:sticky lg:top-[120px] lg:h-max">
                     <div className="flex flex-col gap-0 lg:gap-6">
                         <PreferenceSidebar
                             activeFiltersCount={activeFiltersCount}

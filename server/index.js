@@ -11,8 +11,9 @@ app.use(
     cors({
         origin: [
             process.env.FRONTEND_URL,       
-            "https://appitat.netlify.app",
+            "https://appitat.vercel.app",
             "http://localhost:5173",
+            "http://localhost:5174",
         ].filter(Boolean),
     }),
 );
