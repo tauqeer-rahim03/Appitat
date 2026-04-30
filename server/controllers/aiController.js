@@ -1,4 +1,5 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { default: ollama } = require("ollama");
 const fs = require("fs");
 const User = require("../models/User");
 const Recipe = require("../models/Recipe");
@@ -11,12 +12,17 @@ if (!process.env.GOOGLE_API_KEY) {
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || "");
 const AI_MODEL = "gemini-2.0-flash-lite";
 
-const handleError = (res, error, message = "Internal server error", status = 500) => {
+const handleError = (
+    res,
+    error,
+    message = "Internal server error",
+    status = 500,
+) => {
     console.error(`${message}:`, error);
     res.status(status).json({
         message,
         error: error.message,
-        ...(process.env.NODE_ENV === "development" && { stack: error.stack })
+        ...(process.env.NODE_ENV === "development" && { stack: error.stack }),
     });
 };
 
@@ -27,7 +33,7 @@ const awardXp = async (userId, amount) => {
     user.xp += Number(amount);
     const newLevel = Math.floor(user.xp / 500) + 1;
     const hasLeveledUp = user.level !== newLevel;
-    
+
     if (hasLeveledUp) {
         user.level = newLevel;
     }
@@ -38,20 +44,26 @@ const awardXp = async (userId, amount) => {
 
 exports.getRecommendation = async (req, res) => {
     try {
-        const { cuisine, cookingTime, dietaryType, spiceLevel, mealType, ingredients: reqIngredients } = req.body;
+        const {
+            cuisine,
+            cookingTime,
+            dietaryType,
+            spiceLevel,
+            mealType,
+            ingredients: reqIngredients,
+        } = req.body;
 
         const user = await User.findById(req.user.userId);
         if (!user) return res.status(404).json({ message: "User not found" });
 
-        const finalIngredients = [...new Set([...(user.pantry || []), ...(reqIngredients || [])])];
+        const finalIngredients = [
+            ...new Set([...(user.pantry || []), ...(reqIngredients || [])]),
+        ];
         if (finalIngredients.length === 0) {
-            return res.status(400).json({ message: "Your ingredient list is empty." });
+            return res
+                .status(400)
+                .json({ message: "Your ingredient list is empty." });
         }
-
-        const model = genAI.getGenerativeModel({
-            model: AI_MODEL,
-            generationConfig: { responseMimeType: "application/json" }
-        });
 
         const prompt = `
             Act as a professional master chef. Suggest 4 distinct, creative, and highly detailed recipes using: ${finalIngredients.join(", ")}. 
@@ -63,23 +75,38 @@ exports.getRecommendation = async (req, res) => {
             Each step should be descriptive enough for a high-quality cooking experience.
 
             Response Format: Return a JSON object with 'recipes' array.
-            Recipe fields: title, emoji, description (2 full sentences), cuisine, ingredients (array of strings with quantities), steps (array of 8-10 detailed strings), time, calories (number), difficulty, servings (number), accent (hex), tags.
+            Recipe fields: title, emoji (a SINGLE emoji character only), description (2 full sentences), cuisine, ingredients (array of strings with quantities), steps (array of 8-10 detailed strings), time, calories (number), difficulty, servings (number), accent (hex), tags.
         `;
 
-        const result = await model.generateContent(prompt);
-        let rawText = result.response.text().replace(/```json|```/g, "").trim();
+        const result = await ollama.generate({
+            model: "gpt-oss:120b-cloud",
+            prompt: prompt,
+            format: "json",
+        });
 
-        let startIndex = rawText.indexOf('{');
+        let rawText = result.response
+            .replace(/```json|```/g, "")
+            .trim();
+
+        let startIndex = rawText.indexOf("{");
         if (startIndex === -1) {
-            console.error("Gemini returned no JSON object. Raw response:", rawText);
-            return res.status(502).json({ message: "AI returned an unexpected response. Please try again." });
+            console.error(
+                "Gemini returned no JSON object. Raw response:",
+                rawText,
+            );
+            return res
+                .status(502)
+                .json({
+                    message:
+                        "AI returned an unexpected response. Please try again.",
+                });
         }
 
         let braceCount = 0;
         let endIndex = -1;
         for (let i = startIndex; i < rawText.length; i++) {
-            if (rawText[i] === '{') braceCount++;
-            else if (rawText[i] === '}') braceCount--;
+            if (rawText[i] === "{") braceCount++;
+            else if (rawText[i] === "}") braceCount--;
 
             if (braceCount === 0) {
                 endIndex = i;
@@ -88,8 +115,15 @@ exports.getRecommendation = async (req, res) => {
         }
 
         if (endIndex === -1) {
-            console.error("Gemini returned truncated/incomplete JSON. Raw response:", rawText);
-            return res.status(502).json({ message: "AI response was incomplete. Please try again." });
+            console.error(
+                "Gemini returned truncated/incomplete JSON. Raw response:",
+                rawText,
+            );
+            return res
+                .status(502)
+                .json({
+                    message: "AI response was incomplete. Please try again.",
+                });
         }
 
         const jsonStr = rawText.substring(startIndex, endIndex + 1);
@@ -98,19 +132,32 @@ exports.getRecommendation = async (req, res) => {
         try {
             parsed = JSON.parse(jsonStr);
         } catch (parseErr) {
-            console.error("Failed to parse Gemini JSON:", parseErr.message, "\nRaw JSON string:", jsonStr);
-            return res.status(502).json({ message: "AI returned malformed data. Please try again." });
+            console.error(
+                "Failed to parse Gemini JSON:",
+                parseErr.message,
+                "\nRaw JSON string:",
+                jsonStr,
+            );
+            return res
+                .status(502)
+                .json({
+                    message: "AI returned malformed data. Please try again.",
+                });
         }
 
         const recipes = parsed.recipes;
         if (!Array.isArray(recipes) || recipes.length === 0) {
             console.error("Gemini JSON had no 'recipes' array:", parsed);
-            return res.status(502).json({ message: "AI didn't return any recipes. Please try again." });
+            return res
+                .status(502)
+                .json({
+                    message: "AI didn't return any recipes. Please try again.",
+                });
         }
 
         res.status(200).json({
             message: "Smart recipes generated!",
-            recipes
+            recipes,
         });
     } catch (error) {
         handleError(res, error, "Error generating recipe");
@@ -125,12 +172,16 @@ exports.identifyIngredientsAndRecommend = async (req, res) => {
         if (req.file) {
             imageData = {
                 inlineData: {
-                    data: Buffer.from(fs.readFileSync(req.file.path)).toString("base64"),
+                    data: Buffer.from(fs.readFileSync(req.file.path)).toString(
+                        "base64",
+                    ),
                     mimeType: req.file.mimetype,
                 },
             };
         } else if (imageUrl) {
-            const response = await axios.get(imageUrl, { responseType: "arraybuffer" });
+            const response = await axios.get(imageUrl, {
+                responseType: "arraybuffer",
+            });
             imageData = {
                 inlineData: {
                     data: Buffer.from(response.data).toString("base64"),
@@ -141,16 +192,19 @@ exports.identifyIngredientsAndRecommend = async (req, res) => {
             return res.status(400).json({ message: "No image provided" });
         }
 
-        const model = genAI.getGenerativeModel({ 
+        const model = genAI.getGenerativeModel({
             model: AI_MODEL,
-            generationConfig: { responseMimeType: "application/json" }
+            generationConfig: { responseMimeType: "application/json" },
         });
 
         const prompt = `Analyze this image. List ingredients seen and suggest 3 distinct recipes. 
         Return ONLY a JSON object with 'identifiedIngredients' (array) and 'recipes' (array of recipe objects).`;
 
         const result = await model.generateContent([prompt, imageData]);
-        const text = result.response.text().replace(/```json|```/g, "").trim();
+        const text = result.response
+            .text()
+            .replace(/```json|```/g, "")
+            .trim();
         const aiResponse = JSON.parse(text);
 
         const primaryRecipe = aiResponse.recipes[0];
@@ -170,7 +224,7 @@ exports.identifyIngredientsAndRecommend = async (req, res) => {
             identifiedIngredients: aiResponse.identifiedIngredients,
             recipes: aiResponse.recipes,
             savedRecipeId: savedRecipe._id,
-            xpStatus
+            xpStatus,
         });
     } catch (error) {
         handleError(res, error, "Error processing image");
@@ -189,7 +243,7 @@ exports.saveRecipe = async (req, res) => {
             message: "Recipe saved and XP awarded!",
             recipe: savedRecipe,
             xpGained: 50,
-            xpStatus
+            xpStatus,
         });
     } catch (error) {
         handleError(res, error, "Error saving recipe");
@@ -202,7 +256,8 @@ exports.getRecipeById = async (req, res) => {
         const userId = req.user.userId;
 
         const recipe = await Recipe.findById(id);
-        if (!recipe) return res.status(404).json({ message: "Recipe not found" });
+        if (!recipe)
+            return res.status(404).json({ message: "Recipe not found" });
 
         await User.findByIdAndUpdate(userId, {
             $push: {
