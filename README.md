@@ -3,12 +3,13 @@
   <img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React 19"/>
   <img src="https://img.shields.io/badge/Express-5-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express 5"/>
   <img src="https://img.shields.io/badge/MongoDB-Atlas-47A248?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB"/>
+  <img src="https://img.shields.io/badge/Ollama-gpt--oss-000000?style=for-the-badge&logo=ollama&logoColor=white" alt="Ollama"/>
   <img src="https://img.shields.io/badge/Gemini-API-4285F4?style=for-the-badge&logo=google&logoColor=white" alt="Gemini API"/>
 </p>
 
 # 🍳 Appitat — AI Recipe Recommender
 
-**Appitat** is a full-stack, AI-powered recipe recommendation platform that transforms the ingredients in your kitchen into personalized, creative recipes. Powered by **Google Gemini**, it offers smart pantry tracking, deep dietary personalization, gamified cooking progress, and a stunning modern UI — all designed to make home cooking effortless and enjoyable.
+**Appitat** is a full-stack, AI-powered recipe recommendation platform that transforms the ingredients in your kitchen into personalized, creative recipes. Powered by **Ollama (`gpt-oss`)** for recipe generation and **Google Gemini** for vision detection, it offers smart pantry tracking, deep dietary personalization, gamified cooking progress, and a stunning modern UI — all designed to make home cooking effortless and enjoyable.
 
 > _"Tell us what's in your fridge — our AI finds the perfect recipe from your ingredients every single time."_
 
@@ -46,8 +47,8 @@
 
 ### 🤖 AI-Powered Recipe Generation
 
-- **Smart Recommendations** — Enter your available ingredients and preferences; Gemini AI generates 4 distinct, creative recipes with detailed step-by-step instructions.
-- **Vision-Based Ingredient Detection** — Upload a photo of your fridge or ingredients, and the AI identifies them and suggests matching recipes automatically.
+- **Smart Recommendations** — Enter your available ingredients and preferences; the Ollama AI generates 4 distinct, creative recipes with detailed step-by-step instructions.
+- **Vision-Based Ingredient Detection** — Upload a photo of your fridge or ingredients, and the Gemini AI identifies them and suggests matching recipes automatically.
 - **Deep Personalization** — Recipes adapt to your skill level (beginner → pro), allergy restrictions, disliked ingredients, cuisine preferences, meal type, spice level, and more.
 
 ### 🏠 Smart Pantry Management
@@ -109,7 +110,8 @@
 | ---------------------------- | ------------------------------------------- |
 | **Express 5**                | REST API server                             |
 | **MongoDB + Mongoose 9**     | NoSQL database & ODM                        |
-| **Google Generative AI SDK** | Gemini API integration                      |
+| **Ollama SDK**               | Local/cloud AI recipe generation            |
+| **Google Generative AI SDK** | Gemini API integration for vision features  |
 | **JSON Web Tokens (JWT)**    | Stateless authentication (7-day expiry)     |
 | **bcryptjs**                 | Password hashing with salt rounds           |
 | **Multer**                   | Multipart file uploads (images)             |
@@ -207,6 +209,7 @@ Ai-recipe-recommender/
 - **Node.js** v18+ ([Download](https://nodejs.org/))
 - **npm** v9+ (bundled with Node.js)
 - **MongoDB Atlas** account ([Create Free Cluster](https://www.mongodb.com/cloud/atlas))
+- **Ollama** running locally with the `gpt-oss:120b-cloud` model pulled ([Download](https://ollama.com/))
 - **Google AI Studio** API key ([Get API Key](https://aistudio.google.com/apikey))
 
 ### Installation
@@ -429,21 +432,21 @@ Whitelisted fields: `name`, `email`, `age`, `experience`, `allergies`, `pantry`,
 
 ## 🧠 AI Integration
 
-Appitat uses the **Google Gemini API** (model: `gemini-3.1-flash-lite-preview`) for all AI features:
+Appitat uses a hybrid AI architecture combining **Ollama** (`gpt-oss:120b-cloud`) for recipe generation and the **Google Gemini API** (`gemini-2.0-flash-lite`) for vision features:
 
-### Recipe Generation Pipeline
+### Recipe Generation Pipeline (Ollama)
 
 1. **Input Aggregation** — Merges user-provided ingredients with their saved pantry items.
 2. **Exclusion Filtering** — Combines the user's allergy list and "Never Show Me" list to build exclusion rules.
 3. **Prompt Engineering** — Constructs a detailed prompt including cuisine, meal type, cooking time, diet, spice level, and skill level.
-4. **Structured Output** — Requests JSON-formatted responses with `responseMimeType: "application/json"` for reliable parsing.
+4. **Structured Output** — Requests JSON-formatted responses with `format: "json"` for reliable parsing.
 5. **Robust Parsing** — Uses brace-counting JSON extraction to handle trailing conversational text from the model.
 
-### Vision Recognition Pipeline
+### Vision Recognition Pipeline (Gemini)
 
 1. **Image Ingestion** — Accepts either a file upload (via Multer) or a URL reference.
 2. **Base64 Encoding** — Converts the image to base64 for the Gemini multimodal API.
-3. **Ingredient Identification** — The AI analyzes the image and returns identified ingredients.
+3. **Ingredient Identification** — The Gemini AI analyzes the image and returns identified ingredients.
 4. **Recipe Generation** — Generates 3 recipes based on the identified ingredients.
 5. **Auto-Save** — The primary recipe is automatically saved to the database.
 
