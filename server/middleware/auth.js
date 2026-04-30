@@ -14,13 +14,7 @@ module.exports = (req, res, next) => {
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        console.log("[Auth Middleware] Decoded token:", decoded);
-        
-        req.user = { 
-            userId: decoded.id || decoded.userId 
-        };
-        
-        console.log("[Auth Middleware] Set req.user:", req.user);
+        req.user = { userId: decoded.id || decoded.userId };
         next();
     } catch (err) {
         console.error("[Auth Middleware] Token validation error:", err.message);

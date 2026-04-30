@@ -10,7 +10,6 @@ export default function RecipeDetailPage({ recipe }) {
     const [showXpToast, setShowXpToast] = useState(false);
     const [earnedXp, setEarnedXp] = useState(0);
 
-    // Check if already cooked in this session or in history
     const alreadyCooked = user?.history?.some(h => h.recipeId === String(recipe?.id));
     const [isCooked, setIsCooked] = useState(alreadyCooked);
 
@@ -49,7 +48,6 @@ export default function RecipeDetailPage({ recipe }) {
         setShowXpToast(true);
         setIsCooked(true);
 
-        // Fire confetti
         confetti({
             particleCount: 100,
             spread: 70,

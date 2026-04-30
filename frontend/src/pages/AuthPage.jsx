@@ -51,17 +51,14 @@ export default function AuthPage({ mode }) {
                         email: form.email,
                         password: form.password,
                     });
-                    // After signup, we usually log them in or ask to login
                     setIsLogin(true);
                     setLoading(false);
                     return; // No animation yet, just switch to login
                 }
 
-                // Trigger success animation
                 setSuccessAnim(true);
                 setLoading(false);
 
-                // Wait 3 seconds for animation to finish before routing
                 setTimeout(() => {
                     navigate("dashboard");
                 }, 3000);

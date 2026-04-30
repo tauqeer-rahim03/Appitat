@@ -49,7 +49,6 @@ export default function DashboardPage() {
     const [loading, setLoading] = useState(false);
     const [stream, setStream] = useState("");
 
-    // Toggle states for preference categories
     const [openCategories, setOpenCategories] = useState({
         cuisine: false,
         time: false,
@@ -105,7 +104,6 @@ export default function DashboardPage() {
         if (selectedServings) prefs.push(`servings: ${selectedServings}`);
         if (selectedMealType) prefs.push(`meal type: ${selectedMealType}`);
 
-        // Add Personalization Data securely if present
         if (user?.experience) prefs.push(`skill level: ${user.experience}`);
         if (user?.age)
             prefs.push(`user age: ${user.age} (adjust tone appropriately)`);

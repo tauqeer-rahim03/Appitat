@@ -1,7 +1,6 @@
 const User = require("../models/User");
 const Recipe = require("../models/Recipe");
 
-// Helper for consistent error responses
 const handleError = (res, error, message = "Internal server error", status = 500) => {
     console.error(`${message}:`, error);
     res.status(status).json({
@@ -11,7 +10,6 @@ const handleError = (res, error, message = "Internal server error", status = 500
     });
 };
 
-// Fetch the user's saved recipes
 exports.getMyRecipes = async (req, res) => {
     try {
         const recipes = await Recipe.find({ userId: req.user.userId });
@@ -21,7 +19,6 @@ exports.getMyRecipes = async (req, res) => {
     }
 };
 
-// Update Pantry & Allergies (Legacy/Specific endpoint)
 exports.updatePantry = async (req, res) => {
     try {
         const { ingredients, allergies } = req.body;
@@ -42,7 +39,6 @@ exports.updatePantry = async (req, res) => {
     }
 };
 
-// Get Full Profile
 exports.getProfile = async (req, res) => {
     try {
         const user = await User.findById(req.user.userId).select("-password");
@@ -53,7 +49,6 @@ exports.getProfile = async (req, res) => {
     }
 };
 
-// Update profile images (Multer + JSON fallback)
 exports.updateProfileImages = async (req, res) => {
     try {
         const userId = req.user.userId;
@@ -92,7 +87,6 @@ exports.updateProfileImages = async (req, res) => {
     }
 };
 
-// Update basic profile info (Refactored with whitelist)
 exports.updateProfile = async (req, res) => {
     try {
         const whitelist = [
@@ -129,7 +123,6 @@ exports.updateProfile = async (req, res) => {
     }
 };
 
-// Add XP - Dedicated atomic update
 exports.addXp = async (req, res) => {
     try {
         const { amount } = req.body;
@@ -161,7 +154,6 @@ exports.addXp = async (req, res) => {
     }
 };
 
-// Record a cooked recipe in user history
 exports.recordCook = async (req, res) => {
     try {
         const { recipeId, title, emoji, cuisine, xpAwarded } = req.body;
@@ -193,7 +185,6 @@ exports.recordCook = async (req, res) => {
     }
 };
 
-// Sync Saved Recipes
 exports.syncSavedRecipes = async (req, res) => {
     try {
         const { savedRecipes } = req.body;

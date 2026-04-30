@@ -9,9 +9,8 @@ if (!process.env.GOOGLE_API_KEY) {
 }
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || "");
-const AI_MODEL = "gemini-3.1-flash-lite-preview";
+const AI_MODEL = "gemini-2.0-flash-lite";
 
-// Helper for consistent error responses
 const handleError = (res, error, message = "Internal server error", status = 500) => {
     console.error(`${message}:`, error);
     res.status(status).json({
@@ -21,7 +20,6 @@ const handleError = (res, error, message = "Internal server error", status = 500
     });
 };
 
-// Helper to update XP & Level (Standard: 500 XP per Level)
 const awardXp = async (userId, amount) => {
     const user = await User.findById(userId);
     if (!user) return null;
@@ -70,27 +68,45 @@ exports.getRecommendation = async (req, res) => {
 
         const result = await model.generateContent(prompt);
         let rawText = result.response.text().replace(/```json|```/g, "").trim();
-        
-        // Robust JSON extraction to ignore any trailing conversational text
+
         let startIndex = rawText.indexOf('{');
+        if (startIndex === -1) {
+            console.error("Gemini returned no JSON object. Raw response:", rawText);
+            return res.status(502).json({ message: "AI returned an unexpected response. Please try again." });
+        }
+
         let braceCount = 0;
         let endIndex = -1;
         for (let i = startIndex; i < rawText.length; i++) {
             if (rawText[i] === '{') braceCount++;
             else if (rawText[i] === '}') braceCount--;
-            
-            if (braceCount === 0 && startIndex !== -1) {
+
+            if (braceCount === 0) {
                 endIndex = i;
                 break;
             }
         }
-        
-        let jsonStr = rawText;
-        if (startIndex !== -1 && endIndex !== -1) {
-            jsonStr = rawText.substring(startIndex, endIndex + 1);
+
+        if (endIndex === -1) {
+            console.error("Gemini returned truncated/incomplete JSON. Raw response:", rawText);
+            return res.status(502).json({ message: "AI response was incomplete. Please try again." });
         }
 
-        const recipes = JSON.parse(jsonStr).recipes;
+        const jsonStr = rawText.substring(startIndex, endIndex + 1);
+
+        let parsed;
+        try {
+            parsed = JSON.parse(jsonStr);
+        } catch (parseErr) {
+            console.error("Failed to parse Gemini JSON:", parseErr.message, "\nRaw JSON string:", jsonStr);
+            return res.status(502).json({ message: "AI returned malformed data. Please try again." });
+        }
+
+        const recipes = parsed.recipes;
+        if (!Array.isArray(recipes) || recipes.length === 0) {
+            console.error("Gemini JSON had no 'recipes' array:", parsed);
+            return res.status(502).json({ message: "AI didn't return any recipes. Please try again." });
+        }
 
         res.status(200).json({
             message: "Smart recipes generated!",
@@ -203,5 +219,3 @@ exports.getRecipeById = async (req, res) => {
         handleError(res, error, "Error fetching recipe");
     }
 };
-
-// exports.getMyRecipes moved to userController.js

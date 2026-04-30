@@ -51,21 +51,18 @@ export default function SettingsPage() {
     const handleSave = async () => {
         setIsSaving(true);
         try {
-            // 1. Upload images if any
             if (profileFile || coverFile) {
                 const formData = new FormData();
                 if (profileFile) formData.append("profilePic", profileFile);
                 if (coverFile) formData.append("coverPic", coverFile);
                 
                 const imgRes = await userAPI.updateImages(formData);
-                // The backend returns the new paths
                 if (imgRes.data) {
                     localUser.profilePic = imgRes.data.profilePic || localUser.profilePic;
                     localUser.coverPic = imgRes.data.coverPic || localUser.coverPic;
                 }
             }
 
-            // 2. Update profile data - include EVERY personalization and gamification field
             await userAPI.updateProfile({
                 name: localUser.name,
                 email: localUser.email,
@@ -102,11 +99,9 @@ export default function SettingsPage() {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // Save the file for later upload
         if (type === "profile") setProfileFile(file);
         if (type === "cover") setCoverFile(file);
 
-        // Preview locally
         const reader = new FileReader();
         reader.onloadend = () => {
             handleLocalUpdate({ 

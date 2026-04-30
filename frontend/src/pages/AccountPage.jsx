@@ -14,7 +14,6 @@ export default function AccountPage() {
 
     const [activeTab, setActiveTab] = useState("cookbook");
 
-    // Pass false to all edit modes for Personalization / Pantry cards
     const readOnlyMode = {
         age: false,
         experience: false,
@@ -23,7 +22,6 @@ export default function AccountPage() {
         pantry: false,
     };
 
-    // Redirect to login if a guest tries to access this page
     useEffect(() => {
         if (!user) {
             navigate("login");
@@ -32,7 +30,6 @@ export default function AccountPage() {
 
     if (!user) return null;
 
-    // We'll map some mock history based on constants just to fulfill the requested UI aesthetic
     const mockHistory = RECIPES.slice(1, 4);
 
     const xp = user?.xp || 0;
@@ -40,7 +37,6 @@ export default function AccountPage() {
     const xpInLevel = xp % 500;
     const xpProgress = (xpInLevel / 500) * 100;
 
-    // Badge styling logic
     let badgeTitle = "Novice Cook";
     let badgeColor = "#cd7f32"; // Bronze
     if (currentLevel >= 6 && currentLevel < 10) {

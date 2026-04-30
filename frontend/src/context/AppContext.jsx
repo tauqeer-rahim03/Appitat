@@ -1,6 +1,5 @@
 import { createContext, useContext } from "react";
 
-// Context is initialized with null or undefined without the <Type> generic
 export const AppContext = createContext(undefined);
 
 export const useApp = () => {
