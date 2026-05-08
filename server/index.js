@@ -2,8 +2,18 @@ require("dotenv").config();
 const express = require("express");
 const connectDB = require("./config/db");
 const cors = require("cors");
-const { default: ollama } = require("ollama");
+const { Ollama } = require("ollama");
 const app = express();
+
+// Configure Ollama to use the cloud-hosted API with authentication
+const ollama = new Ollama({
+    host: process.env.OLLAMA_HOST || "http://localhost:11434",
+    headers: {
+        ...(process.env.OLLAMA_API_KEY && {
+            Authorization: `Bearer ${process.env.OLLAMA_API_KEY}`,
+        }),
+    },
+});
 const userRoutes = require("./routes/userRoutes");
 
 // Pre-warm the Ollama model so it's ready for recipe generation

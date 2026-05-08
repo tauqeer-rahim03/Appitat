@@ -1,5 +1,13 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const { default: ollama } = require("ollama");
+const { Ollama } = require("ollama");
+const ollama = new Ollama({
+    host: process.env.OLLAMA_HOST || "http://localhost:11434",
+    headers: {
+        ...(process.env.OLLAMA_API_KEY && {
+            Authorization: `Bearer ${process.env.OLLAMA_API_KEY}`,
+        }),
+    },
+});
 const fs = require("fs");
 const User = require("../models/User");
 const Recipe = require("../models/Recipe");
