@@ -27,6 +27,19 @@ export const authAPI = {
 
 export const aiAPI = {
     getRecommendations: (data) => api.post("/ai/recommend", data),
+    getRecommendationStream: (data) => {
+        const token = localStorage.getItem("appitat_token");
+        const baseURL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+        return fetch(`${baseURL}/ai/recommend-stream`, {
+            method: "POST",
+            credentials: "include",
+            headers: {
+                "Content-Type": "application/json",
+                ...(token && { Authorization: `Bearer ${token}` }),
+            },
+            body: JSON.stringify(data),
+        });
+    },
     visionRecommend: (formData) =>
         api.post("/ai/vision-recipe", formData, {
             headers: {

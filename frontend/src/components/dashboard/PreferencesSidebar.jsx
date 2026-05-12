@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { FiFilter, FiChevronUp, FiChevronDown, FiX } from "react-icons/fi";
 import { createPortal } from "react-dom";
 import {
@@ -6,10 +6,120 @@ import {
     DIET_TAGS,
     TIME_OPTIONS,
     SPICE_LEVELS,
-    CALORIE_OPTIONS,
     SERVING_OPTIONS,
     MEAL_TYPES,
 } from "../../data/constants";
+
+// ─── Top-level: stable identity, never unmounts during drag ───────────────────
+function CalorieRangeSlider({ selectedCalories, setSelectedCalories, openCategories, toggleCategory }) {
+    const MIN = 0, MAX = 2000, STEP = 50;
+    const trackRef = useRef(null);
+
+    // Always-current values — readable inside pointer closures without stale state
+    const valuesRef = useRef(selectedCalories);
+    valuesRef.current = selectedCalories;
+
+    const clamp = (v) => Math.round(Math.max(MIN, Math.min(MAX, v)) / STEP) * STEP;
+
+    const posToValue = (clientX) => {
+        const rect = trackRef.current.getBoundingClientRect();
+        const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+        return clamp(MIN + ratio * (MAX - MIN));
+    };
+
+    const onMinPointerDown = (e) => {
+        e.preventDefault();
+        e.currentTarget.setPointerCapture(e.pointerId);
+    };
+    const onMinPointerMove = (e) => {
+        if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
+        const val = posToValue(e.clientX);
+        const [, maxVal] = valuesRef.current;
+        if (val < maxVal) setSelectedCalories([val, maxVal]);
+    };
+
+    const onMaxPointerDown = (e) => {
+        e.preventDefault();
+        e.currentTarget.setPointerCapture(e.pointerId);
+    };
+    const onMaxPointerMove = (e) => {
+        if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
+        const val = posToValue(e.clientX);
+        const [minVal] = valuesRef.current;
+        if (val > minVal) setSelectedCalories([minVal, val]);
+    };
+
+    const [minVal, maxVal] = selectedCalories;
+    const minPct = ((minVal - MIN) / (MAX - MIN)) * 100;
+    const maxPct = ((maxVal - MIN) / (MAX - MIN)) * 100;
+
+    return (
+        <div>
+            <button
+                className="w-full flex justify-between items-center cursor-pointer mb-3 md:mb-4 border-none bg-none p-0 outline-none"
+                onClick={() => toggleCategory("calories")}
+            >
+                <p className="text-[13px] md:text-[14px] font-bold text-brand-primary/80 tracking-widest uppercase mb-0">
+                    CALORIES
+                </p>
+                <div className="text-brand-primary/80">
+                    {openCategories["calories"] ? <FiChevronUp size={20} /> : <FiChevronDown size={20} />}
+                </div>
+            </button>
+
+            {openCategories["calories"] && (
+                <div className="slide-up pb-2">
+                    {/* Value pills */}
+                    <div className="flex justify-between items-center mb-5">
+                        <span className="text-[13px] font-bold text-brand-secondary bg-brand-secondary/10 px-3 py-1.5 rounded-lg tabular-nums">
+                            {minVal} kcal
+                        </span>
+                        <span className="text-[11px] text-brand-primary/30 font-medium">to</span>
+                        <span className="text-[13px] font-bold text-brand-secondary bg-brand-secondary/10 px-3 py-1.5 rounded-lg tabular-nums">
+                            {maxVal >= MAX ? `${MAX}+ kcal` : `${maxVal} kcal`}
+                        </span>
+                    </div>
+
+                    {/* Track area — extra padding makes thumb easier to grab */}
+                    <div className="px-2.5 pt-2 pb-7">
+                        <div ref={trackRef} className="relative h-[5px] rounded-full bg-brand-primary/15">
+                            {/* Active fill */}
+                            <div
+                                className="absolute top-0 bottom-0 rounded-full bg-brand-secondary pointer-events-none"
+                                style={{ left: `${minPct}%`, right: `${100 - maxPct}%` }}
+                            />
+
+                            {/* Min thumb */}
+                            <div
+                                className="absolute top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-brand-secondary border-[3px] border-white shadow-lg cursor-grab active:cursor-grabbing active:scale-110 transition-transform select-none touch-none z-10"
+                                style={{ left: `calc(${minPct}% - 12px)` }}
+                                onPointerDown={onMinPointerDown}
+                                onPointerMove={onMinPointerMove}
+                            />
+
+                            {/* Max thumb */}
+                            <div
+                                className="absolute top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-brand-secondary border-[3px] border-white shadow-lg cursor-grab active:cursor-grabbing active:scale-110 transition-transform select-none touch-none z-10"
+                                style={{ left: `calc(${maxPct}% - 12px)` }}
+                                onPointerDown={onMaxPointerDown}
+                                onPointerMove={onMaxPointerMove}
+                            />
+                        </div>
+
+                        {/* Scale labels */}
+                        <div className="flex justify-between text-[11px] text-brand-primary/35 font-medium mt-4">
+                            <span>0</span>
+                            <span>500</span>
+                            <span>1000</span>
+                            <span>1500</span>
+                            <span>2000+</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
 
 function FilterContent({
     openCategories,
@@ -44,7 +154,6 @@ function FilterContent({
         { key: "time", label: "TIME AVAILABLE", items: TIME_OPTIONS, type: "single", value: selectedTime, setter: setSelectedTime },
         { key: "diet", label: "DIET", items: DIET_TAGS, type: "multi", value: selectedDiets, setter: setSelectedDiets },
         { key: "spice", label: "SPICE LEVEL", items: SPICE_LEVELS, type: "single", value: selectedSpice, setter: setSelectedSpice },
-        { key: "calories", label: "CALORIES", items: CALORIE_OPTIONS, type: "single", value: selectedCalories, setter: setSelectedCalories },
         { key: "servings", label: "SERVINGS", items: SERVING_OPTIONS, type: "single", value: selectedServings, setter: setSelectedServings },
     ];
 
@@ -82,15 +191,23 @@ function FilterContent({
                                         <span className="mr-1.5 opacity-90">{t.emoji}</span> {t.label}
                                     </button>
                                 );
-                            })}
-                        </div>
+            })}</div>
                     )}
                 </div>
             ))}
+
+            {/* Calorie range slider — stable top-level component */}
+            <CalorieRangeSlider
+                selectedCalories={selectedCalories}
+                setSelectedCalories={setSelectedCalories}
+                openCategories={openCategories}
+                toggleCategory={toggleCategory}
+            />
         </div>
     );
 }
 
+// ─── DashboardPreferencesSidebar ───────────────────────────────────────────────
 export function DashboardPreferencesSidebar({
     activeFiltersCount,
     showMobileFilters,
@@ -158,7 +275,7 @@ export function DashboardPreferencesSidebar({
                 </div>
             </button>
 
-            {/* Desktop: Inline filters (unchanged) */}
+            {/* Desktop: Inline filters */}
             <div className="hidden lg:flex flex-col gap-6 mt-0">
                 <FilterContent {...filterProps} />
             </div>
@@ -166,18 +283,14 @@ export function DashboardPreferencesSidebar({
             {/* Mobile: Bottom Sheet */}
             {showMobileFilters && createPortal(
                 <div className="lg:hidden fixed inset-0 z-[60]">
-                    {/* Backdrop */}
                     <div
                         className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ease-in-out ${isClosing ? "opacity-0" : "opacity-100 backdrop-enter"}`}
                         onClick={handleClose}
                     />
-                    {/* Sheet */}
                     <div className={`absolute bottom-0 left-0 right-0 bg-brand-bg rounded-t-[28px] max-h-[85vh] flex flex-col pb-safe shadow-2xl ${isClosing ? "sheet-exit" : "sheet-enter"}`}>
-                        {/* Drag handle */}
                         <div className="flex justify-center pt-3 pb-1">
                             <div className="w-10 h-1 rounded-full bg-brand-primary/20" />
                         </div>
-                        {/* Header */}
                         <div className="flex items-center justify-between px-5 py-3 border-b border-brand-primary/10">
                             <h3 className="serif text-[20px] font-black text-brand-primary flex items-center gap-2">
                                 <FiFilter className="text-brand-secondary" />
@@ -195,11 +308,9 @@ export function DashboardPreferencesSidebar({
                                 <FiX size={20} />
                             </button>
                         </div>
-                        {/* Scrollable content */}
                         <div className="flex-1 overflow-y-auto px-5 py-5 hide-scrollbar">
                             <FilterContent {...filterProps} isMobile={true} />
                         </div>
-                        {/* Done button */}
                         <div className="px-5 py-4 border-t border-brand-primary/10">
                             <button
                                 onClick={handleClose}

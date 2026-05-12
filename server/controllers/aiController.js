@@ -1,13 +1,6 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const { Ollama } = require("ollama");
-const ollama = new Ollama({
-    host: process.env.OLLAMA_HOST || "http://localhost:11434",
-    headers: {
-        ...(process.env.OLLAMA_API_KEY && {
-            Authorization: `Bearer ${process.env.OLLAMA_API_KEY}`,
-        }),
-    },
-});
+const Groq = require("groq-sdk");
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const fs = require("fs");
 const User = require("../models/User");
 const Recipe = require("../models/Recipe");
@@ -15,6 +8,9 @@ const axios = require("axios");
 
 if (!process.env.GOOGLE_API_KEY) {
     console.error("CRITICAL: GOOGLE_API_KEY is not defined in .env");
+}
+if (!process.env.GROQ_API_KEY) {
+    console.error("CRITICAL: GROQ_API_KEY is not defined in .env");
 }
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || "");
@@ -73,122 +69,165 @@ exports.getRecommendation = async (req, res) => {
                 .json({ message: "Your ingredient list is empty." });
         }
 
-        const prompt = `
-            Act as a professional master chef. Suggest 4 distinct, creative, and highly detailed recipes using: ${finalIngredients.join(", ")}. 
-            EXCLUDE: ${(user.allergies || []).concat(user.neverShowMe || []).join(", ") || "None"}.
-            User Skill: ${user.experience || "beginner"}. 
-            Preferences: Meal Type: ${mealType || "Any"}, Cuisine: ${cuisine || "Any"}, Max Time: ${cookingTime || "Any"}, Diet: ${dietaryType || "None"}, Spice: ${spiceLevel || "Any"}.
-            
-            IMPORTANT: For each recipe, provide a list of at least 8-10 precise, professional, and detailed steps. 
-            Each step should be descriptive enough for a high-quality cooking experience.
+        const systemPrompt = `You are a professional master chef AI. Your ONLY output must be a single, valid JSON object with a 'recipes' key containing an array of recipe objects. Do not include any text, markdown, or explanation outside of the JSON object.`;
 
-            Response Format: Return a JSON object with 'recipes' array.
-            Recipe fields: title, emoji (a SINGLE emoji character only), description (2 full sentences), cuisine, ingredients (array of strings with quantities), steps (array of 8-10 detailed strings), time, calories (number), difficulty, servings (number), accent (hex), tags.
-        `;
+        const userPrompt = `Suggest 4 distinct, creative, and highly detailed recipes using: ${finalIngredients.join(", ")}.
+EXCLUDE ingredients/dishes containing: ${(user.allergies || []).concat(user.neverShowMe || []).join(", ") || "None"}.
+User Skill Level: ${user.experience || "beginner"}.
+Preferences: Meal Type: ${mealType || "Any"}, Cuisine: ${cuisine || "Any"}, Max Cooking Time: ${cookingTime || "Any"}, Dietary Type: ${dietaryType || "None"}, Spice Level: ${spiceLevel || "Any"}.
+For each recipe, provide 8-10 precise, professional, and detailed cooking steps.
+Return a JSON object with a 'recipes' array. Each recipe object must have: title, emoji, description, cuisine, ingredients, steps, time, calories, difficulty, servings, accent, tags.`;
 
-        // Retry logic for cloud-hosted Ollama model (transient failures are common)
-        let result;
-        const MAX_RETRIES = 3;
-        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-            try {
-                console.log(`[Ollama] Recipe generation attempt ${attempt}/${MAX_RETRIES}...`);
-                result = await ollama.generate({
-                    model: "gpt-oss:120b-cloud",
-                    prompt: prompt,
-                    format: "json",
-                });
-                break; // success, exit retry loop
-            } catch (ollamaErr) {
-                console.error(`[Ollama] Attempt ${attempt} failed: ${ollamaErr.message}`);
-                if (attempt === MAX_RETRIES) {
-                    return res.status(503).json({
-                        message: "AI service is temporarily unavailable. Please try again in a moment.",
-                        error: ollamaErr.message,
-                    });
-                }
-                // Wait before retrying
-                await new Promise((resolve) => setTimeout(resolve, 2000));
-            }
+        console.log("[Groq] Generating recipes with openai/gpt-oss-120b...");
+        let chatCompletion;
+        try {
+            chatCompletion = await groq.chat.completions.create({
+                model: "openai/gpt-oss-120b",
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: userPrompt },
+                ],
+                response_format: { type: "json_object" },
+                temperature: 0.8,
+                max_tokens: 4096,
+            });
+        } catch (groqErr) {
+            console.error("[Groq] API call failed:", groqErr.message);
+            return res.status(503).json({
+                message: "AI service is temporarily unavailable. Please try again in a moment.",
+                error: groqErr.message,
+            });
         }
-
-        let rawText = result.response
-            .replace(/```json|```/g, "")
-            .trim();
-
-        let startIndex = rawText.indexOf("{");
-        if (startIndex === -1) {
-            console.error(
-                "Gemini returned no JSON object. Raw response:",
-                rawText,
-            );
-            return res
-                .status(502)
-                .json({
-                    message:
-                        "AI returned an unexpected response. Please try again.",
-                });
-        }
-
-        let braceCount = 0;
-        let endIndex = -1;
-        for (let i = startIndex; i < rawText.length; i++) {
-            if (rawText[i] === "{") braceCount++;
-            else if (rawText[i] === "}") braceCount--;
-
-            if (braceCount === 0) {
-                endIndex = i;
-                break;
-            }
-        }
-
-        if (endIndex === -1) {
-            console.error(
-                "Gemini returned truncated/incomplete JSON. Raw response:",
-                rawText,
-            );
-            return res
-                .status(502)
-                .json({
-                    message: "AI response was incomplete. Please try again.",
-                });
-        }
-
-        const jsonStr = rawText.substring(startIndex, endIndex + 1);
 
         let parsed;
         try {
-            parsed = JSON.parse(jsonStr);
+            parsed = JSON.parse(chatCompletion.choices[0].message.content);
         } catch (parseErr) {
-            console.error(
-                "Failed to parse Gemini JSON:",
-                parseErr.message,
-                "\nRaw JSON string:",
-                jsonStr,
-            );
-            return res
-                .status(502)
-                .json({
-                    message: "AI returned malformed data. Please try again.",
-                });
+            console.error("[Groq] Failed to parse JSON response:", parseErr.message);
+            return res.status(502).json({ message: "AI returned malformed data. Please try again." });
         }
 
         const recipes = parsed.recipes;
         if (!Array.isArray(recipes) || recipes.length === 0) {
-            console.error("Gemini JSON had no 'recipes' array:", parsed);
-            return res
-                .status(502)
-                .json({
-                    message: "AI didn't return any recipes. Please try again.",
-                });
+            console.error("[Groq] JSON had no 'recipes' array:", parsed);
+            return res.status(502).json({ message: "AI didn't return any recipes. Please try again." });
         }
 
-        res.status(200).json({
-            message: "Smart recipes generated!",
-            recipes,
-        });
+        res.status(200).json({ message: "Smart recipes generated!", recipes });
     } catch (error) {
         handleError(res, error, "Error generating recipe");
     }
+};
+
+// --- Streaming SSE endpoint: generates 4 recipes one-at-a-time ---
+exports.getRecommendationStream = async (req, res) => {
+    const {
+        cuisine,
+        cookingTime,
+        dietaryType,
+        spiceLevel,
+        mealType,
+        calories,
+        servings,
+        ingredients: reqIngredients,
+    } = req.body;
+
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+        res.status(404).json({ message: "User not found" });
+        return;
+    }
+
+    const finalIngredients = [
+        ...new Set([...(user.pantry || []), ...(reqIngredients || [])]),
+    ];
+    if (finalIngredients.length === 0) {
+        res.status(400).json({ message: "Your ingredient list is empty." });
+        return;
+    }
+
+    // SSE headers
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+    res.flushHeaders();
+
+    const sendEvent = (event, data) => {
+        res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    const exclusions =
+        (user.allergies || []).concat(user.neverShowMe || []).join(", ") || "None";
+    const systemPrompt = `You are a professional master chef AI. Your ONLY output must be a single, valid JSON object representing exactly ONE recipe. Do not include any text, markdown, or explanation outside of the JSON object.`;
+
+    const TOTAL = 4;
+    const generatedTitles = [];
+
+    for (let i = 0; i < TOTAL; i++) {
+        console.log(`[Groq] Streaming recipe ${i + 1}/${TOTAL}...`);
+
+        const avoidClause =
+            generatedTitles.length > 0
+                ? `\nDo NOT suggest any of these already-generated recipes: ${generatedTitles.join(", ")}.`
+                : "";
+
+        const calorieConstraint = calories
+            ? `CALORIE REQUIREMENT (CRITICAL — do NOT violate): The recipe MUST have a calorie count that fits "${calories}". This is a hard constraint. Design portion sizes, ingredients, and cooking methods to meet this target. The 'calories' field in your JSON must reflect the actual calorie count for the dish.`
+            : "";
+        const servingConstraint = servings ? `Target servings: ${servings}.` : "";
+
+        const userPrompt = `Generate recipe #${i + 1} of ${TOTAL}. Make it distinct from any other recipe in this session.${avoidClause}
+Available ingredients: ${finalIngredients.join(", ")}.
+EXCLUDE ingredients/dishes containing: ${exclusions}.
+User Skill Level: ${user.experience || "beginner"}.
+Preferences: Meal Type: ${mealType || "Any"}, Cuisine: ${cuisine || "Any"}, Max Cooking Time: ${cookingTime || "Any"}, Dietary Type: ${dietaryType || "None"}, Spice Level: ${spiceLevel || "Any"}.
+${calorieConstraint}
+${servingConstraint}
+
+Provide 8-10 precise, professional, and detailed cooking steps. Be creative and thorough — use all available tokens for quality.
+
+Return a JSON object with these exact fields:
+- title (string)
+- emoji (a SINGLE emoji character only)
+- description (string, 2 full sentences describing the dish)
+- tip (string, 1 sentence — a practical chef's tip specific to this recipe, e.g. a technique, substitution, or timing trick)
+- cuisine (string)
+- ingredients (array of strings with quantities)
+- steps (array of 8-10 detailed strings)
+- time (string, e.g. "30 mins")
+- calories (number — ${calories ? `MUST match the calorie requirement above: ${calories}` : "freely estimate the realistic calorie count for this specific dish based on its ingredients and portions — do NOT default to 420, vary it naturally"})
+- difficulty (string: "Easy", "Medium", or "Hard")
+- servings (number)
+- accent (unique hex color string, e.g. "#FF6B6B")
+- tags (array of strings)`;
+
+        try {
+            const chatCompletion = await groq.chat.completions.create({
+                model: "llama-3.3-70b-versatile",
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: userPrompt },
+                ],
+                response_format: { type: "json_object" },
+                temperature: 0.85,
+                max_tokens: 8192,
+            });
+
+            const recipe = JSON.parse(chatCompletion.choices[0].message.content);
+            generatedTitles.push(recipe.title);
+            sendEvent("recipe", { recipe, index: i });
+        } catch (err) {
+            console.error(`[Groq] Recipe ${i + 1} failed:`, err.message);
+            sendEvent("error", {
+                index: i,
+                message: `Recipe ${i + 1} could not be generated.`,
+            });
+        }
+    }
+
+    sendEvent("done", { total: TOTAL });
+    res.end();
 };
 
 exports.identifyIngredientsAndRecommend = async (req, res) => {

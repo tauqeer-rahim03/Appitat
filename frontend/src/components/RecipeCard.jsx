@@ -41,8 +41,8 @@ const RecipeCardOuter = ({ r, index, isSaved, toggleSave, navigate }) => {
                         </div>
                     </div>
                 </div>
-                <p className="text-[14px] text-brand-primary/80 leading-relaxed mb-4 flex-1">
-                    {(r.description || "").slice(0, 100)}…
+                <p className="text-[13px] text-brand-primary/70 leading-relaxed mb-4 flex-1 line-clamp-2">
+                    {r.description}
                 </p>
                 <div className="flex flex-wrap gap-1.5 mb-4">
                     {(r.tags || []).map((t) => (

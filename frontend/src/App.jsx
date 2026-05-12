@@ -44,7 +44,7 @@ export default function App() {
     const [dashSelectedDiets, setDashSelectedDiets] = useState([]);
     const [dashSelectedTime, setDashSelectedTime] = useState("");
     const [dashSelectedSpice, setDashSelectedSpice] = useState("");
-    const [dashSelectedCalories, setDashSelectedCalories] = useState("");
+    const [dashSelectedCalories, setDashSelectedCalories] = useState([0, 2000]);
     const [dashSelectedServings, setDashSelectedServings] = useState("");
     const [dashSelectedMealType, setDashSelectedMealType] = useState("");
 

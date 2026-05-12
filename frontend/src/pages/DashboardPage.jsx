@@ -64,7 +64,7 @@ export default function DashboardPage() {
         selectedDiets.length +
         (selectedTime ? 1 : 0) +
         (selectedSpice ? 1 : 0) +
-        (selectedCalories ? 1 : 0) +
+        (selectedCalories[0] > 0 || selectedCalories[1] < 2000 ? 1 : 0) +
         (selectedServings ? 1 : 0) +
         (selectedMealType ? 1 : 0);
 
@@ -85,74 +85,102 @@ export default function DashboardPage() {
         setIngredients((p) => p.filter((x) => x.id !== id));
     }, []);
 
+    const [streamingCount, setStreamingCount] = useState(0); // how many recipes loaded so far
+
     const search = async () => {
         setLoading(true);
         setStream("");
         setAiIntro("");
-
-        const prefs = [];
-        if (ingredients.length) {
-            const ingStrings = ingredients.map((i) => `${i.qty} ${i.name}`);
-            prefs.push(`ingredients available: ${ingStrings.join(", ")}`);
-        }
-        if (selectedCuisines.length)
-            prefs.push(`preferred cuisine: ${selectedCuisines.join(", ")}`);
-        if (selectedDiets.length)
-            prefs.push(`dietary needs: ${selectedDiets.join(", ")}`);
-        if (selectedTime) prefs.push(`time available: ${selectedTime}`);
-        if (selectedSpice) prefs.push(`spice level: ${selectedSpice}`);
-        if (selectedServings) prefs.push(`servings: ${selectedServings}`);
-        if (selectedMealType) prefs.push(`meal type: ${selectedMealType}`);
-
-        if (user?.experience) prefs.push(`skill level: ${user.experience}`);
-        if (user?.age)
-            prefs.push(`user age: ${user.age} (adjust tone appropriately)`);
-        if (user?.pantry?.length)
-            prefs.push(
-                `pantry staples available (use these freely): ${user.pantry.join(", ")}`,
-            );
-        if (user?.allergies?.length)
-            prefs.push(
-                `CRITICAL ALLERGIES TO AVOID: ${user.allergies.join(", ")}`,
-            );
-        if (user?.neverShowMe?.length)
-            prefs.push(
-                `STRICTLY DO NOT use these ingredients: ${user.neverShowMe.join(", ")}`,
-            );
+        setResults([]);
+        setStreamingCount(0);
 
         try {
-            const response = await aiAPI.getRecommendations({
+            const response = await aiAPI.getRecommendationStream({
                 ingredients: ingredients.map((i) => i.name),
                 cuisine: selectedCuisines[0],
                 cookingTime: selectedTime,
                 dietaryType: selectedDiets[0],
                 spiceLevel: selectedSpice,
                 mealType: selectedMealType,
+                calories: (selectedCalories[0] > 0 || selectedCalories[1] < 2000)
+                    ? `${selectedCalories[0]}kcal - ${selectedCalories[1] >= 2000 ? "2000+kcal" : `${selectedCalories[1]}kcal`}`
+                    : null,
+                servings: selectedServings,
             });
 
-            const aiRecipes = response.data.recipes || [];
-            const formattedResults = aiRecipes.map((r, index) => ({
-                id: `ai-${Date.now()}-${index}`,
-                ...r,
-            }));
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.message || `Server error ${response.status}`);
+            }
 
-            setResults(formattedResults);
-            setAiIntro("Here are some wonderful recipes crafted just for you!");
-            setStream("Here are some wonderful recipes crafted just for you!");
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = "";
+
+            const processChunk = (chunk) => {
+                buffer += chunk;
+                const parts = buffer.split("\n\n");
+                buffer = parts.pop(); // keep incomplete last part
+
+                for (const part of parts) {
+                    const lines = part.split("\n");
+                    let eventType = "message";
+                    let dataStr = "";
+
+                    for (const line of lines) {
+                        if (line.startsWith("event: ")) eventType = line.slice(7).trim();
+                        else if (line.startsWith("data: ")) dataStr = line.slice(6).trim();
+                    }
+
+                    if (!dataStr) continue;
+
+                    try {
+                        const payload = JSON.parse(dataStr);
+
+                        if (eventType === "recipe") {
+                            const newRecipe = {
+                                id: `ai-stream-${Date.now()}-${payload.index}`,
+                                ...payload.recipe,
+                            };
+                            setResults((prev) => {
+                                const next = [...prev];
+                                next[payload.index] = newRecipe;
+                                return next;
+                            });
+                            setStreamingCount((c) => c + 1);
+                            setStream(`Crafting recipe ${payload.index + 1} of 4... ✓`);
+                        } else if (eventType === "error") {
+                            console.warn(`[SSE] Recipe slot ${payload.index} failed:`, payload.message);
+                            setStreamingCount((c) => c + 1);
+                        } else if (eventType === "done") {
+                            setStream("Here are your freshly crafted recipes!");
+                            setAiIntro("Here are your freshly crafted recipes!");
+                            setLoading(false);
+                            addXp(50);
+                            handleCookDay();
+                        }
+                    } catch (e) {
+                        // ignore malformed SSE chunks
+                    }
+                }
+            };
+
+            // eslint-disable-next-line no-constant-condition
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                processChunk(decoder.decode(value, { stream: true }));
+            }
         } catch (err) {
             console.error("AI Recommendation Error:", err);
-            const errorMessage = err.response?.data?.message || err.message;
             setStream(
                 "I'm sorry, I'm having trouble connecting to my creative kitchen: " +
-                    errorMessage,
+                    (err.message || "Unknown error"),
             );
             setAiIntro("Connection issue.");
             setResults([]);
+            setLoading(false);
         }
-
-        setLoading(false);
-        addXp(50);
-        handleCookDay();
     };
 
     return (
@@ -319,7 +347,9 @@ export default function DashboardPage() {
                                         />
                                     ))}
                                     <span className="text-brand-primary/60 text-[13px] ml-3 font-medium tracking-wide">
-                                        Thinking with AI…
+                                        {streamingCount > 0
+                                            ? `Generating recipe ${streamingCount + 1} of 4…`
+                                            : "Thinking with AI…"}
                                     </span>
                                 </div>
                             ) : (
@@ -335,11 +365,21 @@ export default function DashboardPage() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 pb-20">
                         {loading ? (
-                            <>
-                                {[1, 2, 3, 4].map((i) => (
-                                    <RecipeCardSkeleton key={i} />
-                                ))}
-                            </>
+                            // Show 4 slots: filled cards for arrived recipes, skeletons for pending ones
+                            Array.from({ length: 4 }).map((_, i) =>
+                                results[i] ? (
+                                    <RecipeCard
+                                        key={results[i].id}
+                                        r={results[i]}
+                                        index={i}
+                                        isSaved={!!saved.find((s) => s.id === results[i].id)}
+                                        toggleSave={toggleSave}
+                                        navigate={navigate}
+                                    />
+                                ) : (
+                                    <RecipeCardSkeleton key={`skeleton-${i}`} />
+                                )
+                            )
                         ) : (
                             results.map((r, i) => (
                                 <RecipeCard

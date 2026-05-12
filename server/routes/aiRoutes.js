@@ -7,6 +7,7 @@ const multer = require("multer");
 const upload = multer({ dest: "uploads/" });
 
 router.post("/recommend", auth, aiController.getRecommendation);
+router.post("/recommend-stream", auth, aiController.getRecommendationStream);
 
 router.post("/save", auth, aiController.saveRecipe);
 
