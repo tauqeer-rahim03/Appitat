@@ -71,7 +71,7 @@ exports.getRecommendation = async (req, res) => {
 
         const systemPrompt = `You are a professional master chef AI. Your ONLY output must be a single, valid JSON object with a 'recipes' key containing an array of recipe objects. Do not include any text, markdown, or explanation outside of the JSON object.`;
 
-        const userPrompt = `Suggest 4 distinct, creative, and highly detailed recipes using: ${finalIngredients.join(", ")}.
+        const userPrompt = `Suggest 6 distinct, creative, and highly detailed recipes using: ${finalIngredients.join(", ")}.
 EXCLUDE ingredients/dishes containing: ${(user.allergies || []).concat(user.neverShowMe || []).join(", ") || "None"}.
 User Skill Level: ${user.experience || "beginner"}.
 Preferences: Meal Type: ${mealType || "Any"}, Cuisine: ${cuisine || "Any"}, Max Cooking Time: ${cookingTime || "Any"}, Dietary Type: ${dietaryType || "None"}, Spice Level: ${spiceLevel || "Any"}.
@@ -161,7 +161,7 @@ exports.getRecommendationStream = async (req, res) => {
         (user.allergies || []).concat(user.neverShowMe || []).join(", ") || "None";
     const systemPrompt = `You are a professional master chef AI. Your ONLY output must be a single, valid JSON object representing exactly ONE recipe. Do not include any text, markdown, or explanation outside of the JSON object.`;
 
-    const TOTAL = 4;
+    const TOTAL = 6;
     const generatedTitles = [];
 
     for (let i = 0; i < TOTAL; i++) {

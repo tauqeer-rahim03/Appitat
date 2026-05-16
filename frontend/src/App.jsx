@@ -10,6 +10,7 @@ import { AppContext } from "./context/AppContext";
 import Navbar from "./components/Navbar";
 import BackToTopButton from "./components/BackToTopButton";
 import MobileBottomNav from "./components/MobileBottomNav";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 const HeroPage = lazy(() => import("./pages/HeroPage"));
 const AuthPage = lazy(() => import("./pages/AuthPage"));
@@ -22,7 +23,7 @@ const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 import { calculateUserBadges } from "./data/badges";
 import { RECIPES } from "./data/constants";
 import { FiCheckCircle, FiX } from "react-icons/fi";
-import { userAPI } from "./lib/api";
+import { userAPI, aiAPI } from "./lib/api";
 
 import useLocalStorage from "./hooks/useLocalStorage";
 import useTheme from "./hooks/useTheme";
@@ -50,6 +51,104 @@ export default function App() {
     const [dashSelectedCalories, setDashSelectedCalories] = useState([0, 2000]);
     const [dashSelectedServings, setDashSelectedServings] = useState("");
     const [dashSelectedMealType, setDashSelectedMealType] = useState("");
+    const [dashLoading, setDashLoading] = useState(false);
+    const [dashStream, setDashStream] = useState("");
+    const [dashStreamingCount, setDashStreamingCount] = useState(0);
+
+    const generateRecipes = async () => {
+        setDashLoading(true);
+        setDashStream("");
+        setDashAiIntro("");
+        setDashResults([]);
+        setDashStreamingCount(0);
+
+        try {
+            const response = await aiAPI.getRecommendationStream({
+                ingredients: dashIngredients.map((i) => i.name),
+                cuisine: dashSelectedCuisines[0],
+                cookingTime: dashSelectedTime,
+                dietaryType: dashSelectedDiets[0],
+                spiceLevel: dashSelectedSpice,
+                mealType: dashSelectedMealType,
+                calories: (dashSelectedCalories[0] > 0 || dashSelectedCalories[1] < 2000)
+                    ? `${dashSelectedCalories[0]}kcal - ${dashSelectedCalories[1] >= 2000 ? "2000+kcal" : `${dashSelectedCalories[1]}kcal`}`
+                    : null,
+                servings: dashSelectedServings,
+            });
+
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.message || `Server error ${response.status}`);
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = "";
+
+            const processChunk = (chunk) => {
+                buffer += chunk;
+                const parts = buffer.split("\n\n");
+                buffer = parts.pop(); 
+
+                for (const part of parts) {
+                    const lines = part.split("\n");
+                    let eventType = "message";
+                    let dataStr = "";
+
+                    for (const line of lines) {
+                        if (line.startsWith("event: ")) eventType = line.slice(7).trim();
+                        else if (line.startsWith("data: ")) dataStr = line.slice(6).trim();
+                    }
+
+                    if (!dataStr) continue;
+
+                    try {
+                        const payload = JSON.parse(dataStr);
+
+                        if (eventType === "recipe") {
+                            const newRecipe = {
+                                id: `ai-stream-${Date.now()}-${payload.index}`,
+                                ...payload.recipe,
+                            };
+                            setDashResults((prev) => {
+                                const next = [...prev];
+                                next[payload.index] = newRecipe;
+                                return next;
+                            });
+                            setDashStreamingCount((c) => c + 1);
+                            setDashStream(`Crafting recipe ${payload.index + 1} of 6... ✓`);
+                        } else if (eventType === "error") {
+                            console.warn(`[SSE] Recipe slot ${payload.index} failed:`, payload.message);
+                            setDashStreamingCount((c) => c + 1);
+                        } else if (eventType === "done") {
+                            setDashStream("Here are your freshly crafted recipes!");
+                            setDashAiIntro("Here are your freshly crafted recipes!");
+                            setDashLoading(false);
+                            addXp(50);
+                            handleCookDay();
+                        }
+                    } catch (e) {
+                        // ignore malformed SSE chunks
+                    }
+                }
+            };
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                processChunk(decoder.decode(value, { stream: true }));
+            }
+        } catch (err) {
+            console.error("AI Recommendation Error:", err);
+            setDashStream(
+                "I'm sorry, I'm having trouble connecting to my creative kitchen: " +
+                    (err.message || "Unknown error"),
+            );
+            setDashAiIntro("Connection issue.");
+            setDashResults([]);
+            setDashLoading(false);
+        }
+    };
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -282,6 +381,12 @@ export default function App() {
                 setSelectedServings: setDashSelectedServings,
                 selectedMealType: dashSelectedMealType,
                 setSelectedMealType: setDashSelectedMealType,
+                loading: dashLoading,
+                setLoading: setDashLoading,
+                stream: dashStream,
+                setStream: setDashStream,
+                streamingCount: dashStreamingCount,
+                generateRecipes,
             }}
         >
             {achievedBadge && (
@@ -324,40 +429,42 @@ export default function App() {
 
             {showNav && <Navbar />}
             {showNav && <MobileBottomNav />}
-            <Suspense
-                fallback={
-                    <div className="min-h-screen bg-brand-bg flex items-center justify-center">
-                        <div className="w-12 h-12 border-4 border-brand-primary/20 border-t-brand-secondary rounded-full animate-spin"></div>
-                    </div>
-                }
-            >
-                <Routes>
-                    <Route
-                        path="/"
-                        element={
-                            user ? (
-                                <Navigate to="/dashboard" replace />
-                            ) : (
-                                <HeroPage />
-                            )
-                        }
-                    />
-                    <Route path="/login" element={<AuthPage mode="login" />} />
-                    <Route
-                        path="/signup"
-                        element={<AuthPage mode="signup" />}
-                    />
-                    <Route path="/dashboard" element={user ? <DashboardPage /> : <Navigate to="/login" replace />} />
-                    <Route
-                        path="/recipe"
-                        element={user ? <RecipeDetailPage recipe={currentRecipe} /> : <Navigate to="/login" replace />}
-                    />
-                    <Route path="/saved" element={user ? <SavedPage /> : <Navigate to="/login" replace />} />
-                    <Route path="/account" element={user ? <AccountPage /> : <Navigate to="/login" replace />} />
-                    <Route path="/settings" element={user ? <SettingsPage /> : <Navigate to="/login" replace />} />
-                    <Route path="*" element={<NotFoundPage />} />
-                </Routes>
-            </Suspense>
+            <ErrorBoundary>
+                <Suspense
+                    fallback={
+                        <div className="min-h-screen bg-brand-bg flex items-center justify-center">
+                            <div className="w-12 h-12 border-4 border-brand-primary/20 border-t-brand-secondary rounded-full animate-spin"></div>
+                        </div>
+                    }
+                >
+                    <Routes>
+                        <Route
+                            path="/"
+                            element={
+                                user ? (
+                                    <Navigate to="/dashboard" replace />
+                                ) : (
+                                    <HeroPage />
+                                )
+                            }
+                        />
+                        <Route path="/login" element={<AuthPage mode="login" />} />
+                        <Route
+                            path="/signup"
+                            element={<AuthPage mode="signup" />}
+                        />
+                        <Route path="/dashboard" element={user ? <DashboardPage /> : <Navigate to="/login" replace />} />
+                        <Route
+                            path="/recipe"
+                            element={user ? <RecipeDetailPage recipe={currentRecipe} /> : <Navigate to="/login" replace />}
+                        />
+                        <Route path="/saved" element={user ? <SavedPage /> : <Navigate to="/login" replace />} />
+                        <Route path="/account" element={user ? <AccountPage /> : <Navigate to="/login" replace />} />
+                        <Route path="/settings" element={user ? <SettingsPage /> : <Navigate to="/login" replace />} />
+                        <Route path="*" element={<NotFoundPage />} />
+                    </Routes>
+                </Suspense>
+            </ErrorBoundary>
         </AppContext.Provider>
     );
 }

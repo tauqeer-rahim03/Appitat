@@ -43,11 +43,13 @@ export default function DashboardPage() {
         setSelectedServings,
         selectedMealType,
         setSelectedMealType,
+        loading,
+        stream,
+        streamingCount,
+        generateRecipes,
     } = useApp();
 
     const [showMobileFilters, setShowMobileFilters] = useState(false);
-    const [loading, setLoading] = useState(false);
-    const [stream, setStream] = useState("");
 
     const [openCategories, setOpenCategories] = useState({
         cuisine: false,
@@ -85,102 +87,8 @@ export default function DashboardPage() {
         setIngredients((p) => p.filter((x) => x.id !== id));
     }, []);
 
-    const [streamingCount, setStreamingCount] = useState(0); // how many recipes loaded so far
-
     const search = async () => {
-        setLoading(true);
-        setStream("");
-        setAiIntro("");
-        setResults([]);
-        setStreamingCount(0);
-
-        try {
-            const response = await aiAPI.getRecommendationStream({
-                ingredients: ingredients.map((i) => i.name),
-                cuisine: selectedCuisines[0],
-                cookingTime: selectedTime,
-                dietaryType: selectedDiets[0],
-                spiceLevel: selectedSpice,
-                mealType: selectedMealType,
-                calories: (selectedCalories[0] > 0 || selectedCalories[1] < 2000)
-                    ? `${selectedCalories[0]}kcal - ${selectedCalories[1] >= 2000 ? "2000+kcal" : `${selectedCalories[1]}kcal`}`
-                    : null,
-                servings: selectedServings,
-            });
-
-            if (!response.ok) {
-                const errData = await response.json().catch(() => ({}));
-                throw new Error(errData.message || `Server error ${response.status}`);
-            }
-
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = "";
-
-            const processChunk = (chunk) => {
-                buffer += chunk;
-                const parts = buffer.split("\n\n");
-                buffer = parts.pop(); // keep incomplete last part
-
-                for (const part of parts) {
-                    const lines = part.split("\n");
-                    let eventType = "message";
-                    let dataStr = "";
-
-                    for (const line of lines) {
-                        if (line.startsWith("event: ")) eventType = line.slice(7).trim();
-                        else if (line.startsWith("data: ")) dataStr = line.slice(6).trim();
-                    }
-
-                    if (!dataStr) continue;
-
-                    try {
-                        const payload = JSON.parse(dataStr);
-
-                        if (eventType === "recipe") {
-                            const newRecipe = {
-                                id: `ai-stream-${Date.now()}-${payload.index}`,
-                                ...payload.recipe,
-                            };
-                            setResults((prev) => {
-                                const next = [...prev];
-                                next[payload.index] = newRecipe;
-                                return next;
-                            });
-                            setStreamingCount((c) => c + 1);
-                            setStream(`Crafting recipe ${payload.index + 1} of 4... ✓`);
-                        } else if (eventType === "error") {
-                            console.warn(`[SSE] Recipe slot ${payload.index} failed:`, payload.message);
-                            setStreamingCount((c) => c + 1);
-                        } else if (eventType === "done") {
-                            setStream("Here are your freshly crafted recipes!");
-                            setAiIntro("Here are your freshly crafted recipes!");
-                            setLoading(false);
-                            addXp(50);
-                            handleCookDay();
-                        }
-                    } catch (e) {
-                        // ignore malformed SSE chunks
-                    }
-                }
-            };
-
-            // eslint-disable-next-line no-constant-condition
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                processChunk(decoder.decode(value, { stream: true }));
-            }
-        } catch (err) {
-            console.error("AI Recommendation Error:", err);
-            setStream(
-                "I'm sorry, I'm having trouble connecting to my creative kitchen: " +
-                    (err.message || "Unknown error"),
-            );
-            setAiIntro("Connection issue.");
-            setResults([]);
-            setLoading(false);
-        }
+        generateRecipes();
     };
 
     return (
@@ -348,7 +256,7 @@ export default function DashboardPage() {
                                     ))}
                                     <span className="text-brand-primary/60 text-[13px] ml-3 font-medium tracking-wide">
                                         {streamingCount > 0
-                                            ? `Generating recipe ${streamingCount + 1} of 4…`
+                                             ? `Generating recipe ${streamingCount + 1} of 6…`
                                             : "Thinking with AI…"}
                                     </span>
                                 </div>
@@ -365,8 +273,8 @@ export default function DashboardPage() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 pb-20">
                         {loading ? (
-                            // Show 4 slots: filled cards for arrived recipes, skeletons for pending ones
-                            Array.from({ length: 4 }).map((_, i) =>
+                             // Show 6 slots: filled cards for arrived recipes, skeletons for pending ones
+                             Array.from({ length: 6 }).map((_, i) =>
                                 results[i] ? (
                                     <RecipeCard
                                         key={results[i].id}
