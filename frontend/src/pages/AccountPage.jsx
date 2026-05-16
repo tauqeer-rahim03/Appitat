@@ -89,12 +89,14 @@ export default function AccountPage() {
 
                     <div className="slide-up">
                         <h1 className="serif text-[26px] md:text-[44px] font-black text-brand-bg mb-1 flex items-center justify-center gap-3">
-                            {user.name || user.email?.split("@")[0] || "User"}
+                            {(typeof user?.name === 'string' ? user.name : '') || 
+                             (typeof user?.email === 'string' ? user.email.split("@")[0] : '') || 
+                             "User"}
                         </h1>
                         <p className="text-brand-bg/70 text-[14px] md:text-[15px] flex items-center justify-center gap-2">
-                            {user.email}
+                            {user?.email || ""}
                         </p>
-                        {user.experience && (
+                        {user?.experience && typeof user.experience === 'string' && (
                             <p className="text-white/70 text-[13px] uppercase tracking-wider font-bold mt-3 bg-black/20 inline-block px-3 py-1 rounded-full border border-white/10">
                                 {user.experience} Cook
                             </p>
