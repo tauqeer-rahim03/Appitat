@@ -118,8 +118,7 @@ export default function App() {
         localStorage.removeItem("appitat_token");
         setUser(null);
         setSaved([]);
-        navigate("/");
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        window.location.href = "/";
     };
 
     const toggleSave = async (r) => {

@@ -1,7 +1,15 @@
 import axios from "axios";
 
+const getBaseUrl = () => {
+    if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+    if (typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+        return "https://appitat-backend.onrender.com/api";
+    }
+    return "http://localhost:5000/api";
+};
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api",
+  baseURL: getBaseUrl(),
   headers: {
     "Content-Type": "application/json",
   },
@@ -33,7 +41,7 @@ export const aiAPI = {
     getRecommendations: (data) => api.post("/ai/recommend", data),
     getRecommendationStream: (data) => {
         const token = localStorage.getItem("appitat_token");
-        const baseURL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+        const baseURL = getBaseUrl();
         return fetch(`${baseURL}/ai/recommend-stream`, {
             method: "POST",
             credentials: "include",

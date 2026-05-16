@@ -1,4 +1,12 @@
-const API_URL = "http://localhost:5000";
+const getBaseUrl = () => {
+    if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+    if (typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+        return "https://appitat-backend.onrender.com/api";
+    }
+    return "http://localhost:5000/api";
+};
+
+const API_URL = getBaseUrl().replace(/\/api$/, "");
 
 /**
  * Resolves a picture URL. If it's a relative path from the backend (starting with "uploads/"),

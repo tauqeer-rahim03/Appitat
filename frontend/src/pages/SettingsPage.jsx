@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useApp } from "../context/AppContext";
-import { FiCamera, FiCheck, FiArrowLeft, FiAlertCircle, FiEye, FiEyeOff } from "react-icons/fi";
+import { FiCamera, FiCheck, FiArrowLeft, FiAlertCircle, FiEye, FiEyeOff, FiUser } from "react-icons/fi";
 import { AccountPersonalizationCard } from "../components/AccountPersonalizationCard";
 import { AccountPantryCard } from "../components/AccountPantryCard";
 import { userAPI, authAPI } from "../lib/api";
@@ -82,6 +82,8 @@ export default function SettingsPage() {
                 cookDays: localUser.cookDays, // Sync cookDays
                 xp: localUser.xp,
                 level: localUser.level,
+                profilePic: localUser.profilePic,
+                coverPic: localUser.coverPic,
             });
 
             updateUser(localUser);
@@ -212,12 +214,25 @@ export default function SettingsPage() {
                 </button>
 
                 {/* Cover Image Upload */}
-                <button
-                    className="absolute top-4 right-4 bg-black/40 hover:bg-black/60 text-white backdrop-blur-md px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-2 transition-colors z-20"
-                    onClick={() => coverPicRef.current?.click()}
-                >
-                    <FiCamera /> Edit Cover
-                </button>
+                <div className="absolute top-4 right-4 flex flex-col items-end gap-2 z-20">
+                    <button
+                        className="bg-black/40 hover:bg-black/60 text-white backdrop-blur-md px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-2 transition-colors cursor-pointer"
+                        onClick={() => coverPicRef.current?.click()}
+                    >
+                        <FiCamera /> Edit Cover
+                    </button>
+                    {localUser.coverPic && (
+                        <button
+                            className="bg-black/40 hover:bg-red-500/80 text-white backdrop-blur-md px-3 py-1 rounded-lg text-[11px] font-bold transition-colors cursor-pointer"
+                            onClick={() => {
+                                setCoverFile(null);
+                                handleLocalUpdate({ coverPic: "" });
+                            }}
+                        >
+                            Remove Cover
+                        </button>
+                    )}
+                </div>
                 <input
                     type="file"
                     accept="image/*"
@@ -240,11 +255,7 @@ export default function SettingsPage() {
                                     className="w-full h-full object-cover"
                                 />
                             ) : (
-                                (localUser.name && localUser.name[0]) ? (
-                                    localUser.name[0].toUpperCase()
-                                ) : (
-                                    "U"
-                                )
+                                <FiUser className="w-1/2 h-1/2 opacity-80" />
                             )}
                             <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity">
                                 <FiCamera className="text-white text-2xl" />
@@ -258,6 +269,18 @@ export default function SettingsPage() {
                             onChange={(e) => handleImageUpload(e, "profile")}
                         />
                     </button>
+
+                    {localUser.profilePic && (
+                        <button
+                            className="text-white bg-black/40 hover:bg-black/60 px-3 py-1 rounded-lg text-xs font-bold transition-colors mb-4 backdrop-blur-sm flex items-center gap-1.5 cursor-pointer"
+                            onClick={() => {
+                                setProfileFile(null);
+                                handleLocalUpdate({ profilePic: "" });
+                            }}
+                        >
+                            Remove Picture
+                        </button>
+                    )}
 
                     <h1 className="serif text-[32px] font-black text-brand-bg mb-2">
                         Settings

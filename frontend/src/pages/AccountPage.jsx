@@ -83,7 +83,7 @@ export default function AccountPage() {
                                 className="w-full h-full object-cover"
                             />
                         ) : (
-                            (user.name && user.name[0]) ? user.name[0].toUpperCase() : "U"
+                            <FiUser className="w-1/2 h-1/2 opacity-80" />
                         )}
                     </div>
 
@@ -148,7 +148,7 @@ export default function AccountPage() {
                                         Saved Recipes
                                     </span>
                                     <span className="text-brand-primary font-bold">
-                                        {saved.length}
+                                        {saved?.length || 0}
                                     </span>
                                 </div>
                                 <div className="flex justify-between items-center border-b border-brand-primary/10 pb-3">
@@ -290,7 +290,7 @@ export default function AccountPage() {
                             </button>
                         </div>
 
-                        {saved.length === 0 ? (
+                        {!saved || saved.length === 0 ? (
                             <div className="slide-up text-center py-16 bg-brand-card rounded-card border border-brand-primary/20 border-dashed">
                                 <div className="w-16 h-16 bg-brand-bg rounded-2xl flex items-center justify-center mx-auto mb-4">
                                     <FiHeart className="text-[28px] text-brand-secondary/80" />
@@ -311,7 +311,7 @@ export default function AccountPage() {
                             </div>
                         ) : (
                             <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-6">
-                                {saved.slice(0, 4).map((r, i) => (
+                                {(saved || []).slice(0, 4).map((r, i) => (
                                     <div
                                         key={r.id}
                                         className="card slide-up rounded-card overflow-hidden cursor-default"
@@ -352,10 +352,10 @@ export default function AccountPage() {
                                                 </div>
                                             </div>
                                             <p className="text-[13px] text-brand-primary/80 leading-relaxed mb-4">
-                                                {r.description.slice(0, 80)}…
+                                                {r.description ? `${r.description.slice(0, 80)}…` : ""}
                                             </p>
                                             <div className="flex flex-wrap gap-1.5 mb-4">
-                                                {r.tags.map((t) => (
+                                                {r.tags?.map((t) => (
                                                     <span
                                                         key={t}
                                                         className="tag !text-[10px] pointer-events-none"

@@ -125,6 +125,7 @@ export default function IngredientManager() {
                             className="w-full bg-brand-bg/80 border-2 border-brand-primary/20 rounded-xl md:rounded-2xl px-4 md:px-5 py-3.5 md:py-4 text-brand-primary font-bold focus:border-brand-secondary focus:ring-4 focus:ring-brand-secondary/10 outline-none transition-all placeholder:text-brand-primary/40 shadow-sm"
                             value={qtyInput}
                             onChange={(e) => setQtyInput(e.target.value)}
+                            required
                         />
                     </div>
                     </div>
