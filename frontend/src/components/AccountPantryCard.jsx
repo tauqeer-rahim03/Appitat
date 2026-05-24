@@ -86,12 +86,12 @@ export function AccountPantryCard({
                                         None
                                     </span>
                                 )}
-                            {(user.pantry || []).map((t) => (
+                            {(user.pantry || []).map((t, idx) => (
                                 <span
-                                    key={t}
+                                    key={typeof t === 'string' ? t : idx}
                                     className="tag text-[14px]! flex items-center gap-1 bg-brand-primary/5 border-brand-primary/10"
                                 >
-                                    {t}
+                                    {typeof t === 'string' ? t : (t?.name ?? String(t))}
                                     {editMode.pantry && (
                                         <button
                                             className="bg-none border-none cursor-pointer p-0 flex items-center justify-center hover:text-brand-secondary transition-colors"

@@ -28,6 +28,7 @@ app.use("/uploads", express.static("uploads"));
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/ai", require("./routes/aiRoutes"));
 app.use("/api/user", userRoutes);
+app.use("/api/feedback", require("./routes/feedbackRoutes"));
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

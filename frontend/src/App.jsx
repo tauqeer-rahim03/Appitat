@@ -1,4 +1,4 @@
-import { useState, useEffect, Suspense, lazy } from "react";
+import { useState, useEffect, useRef, Suspense, lazy } from "react";
 import {
     Routes,
     Route,
@@ -24,6 +24,7 @@ import { calculateUserBadges } from "./data/badges";
 import { RECIPES } from "./data/constants";
 import { FiCheckCircle, FiX } from "react-icons/fi";
 import { userAPI, aiAPI } from "./lib/api";
+import { sanitizeUser } from "./lib/utils";
 
 import useLocalStorage from "./hooks/useLocalStorage";
 import useTheme from "./hooks/useTheme";
@@ -54,8 +55,13 @@ export default function App() {
     const [dashLoading, setDashLoading] = useState(false);
     const [dashStream, setDashStream] = useState("");
     const [dashStreamingCount, setDashStreamingCount] = useState(0);
+    // Generation counter — incremented on each new search to cancel stale SSE readers
+    const dashGenRef = useRef(0);
 
     const generateRecipes = async () => {
+        // Cancel any in-progress SSE reader from a previous call
+        const gen = ++dashGenRef.current;
+
         setDashLoading(true);
         setDashStream("");
         setDashAiIntro("");
@@ -86,9 +92,12 @@ export default function App() {
             let buffer = "";
 
             const processChunk = (chunk) => {
+                // Discard updates from a stale search
+                if (dashGenRef.current !== gen) return;
+
                 buffer += chunk;
                 const parts = buffer.split("\n\n");
-                buffer = parts.pop(); 
+                buffer = parts.pop();
 
                 for (const part of parts) {
                     const lines = part.split("\n");
@@ -106,17 +115,19 @@ export default function App() {
                         const payload = JSON.parse(dataStr);
 
                         if (eventType === "recipe") {
+                            const idx = Number(payload.index);
                             const newRecipe = {
-                                id: `ai-stream-${Date.now()}-${payload.index}`,
                                 ...payload.recipe,
+                                // id comes LAST so it always overrides payload.recipe.id
+                                id: `ai-${gen}-${idx}`,
                             };
                             setDashResults((prev) => {
                                 const next = [...prev];
-                                next[payload.index] = newRecipe;
+                                next[idx] = newRecipe;
                                 return next;
                             });
                             setDashStreamingCount((c) => c + 1);
-                            setDashStream(`Crafting recipe ${payload.index + 1} of 6... ✓`);
+                            setDashStream(`Crafting recipe ${idx + 1} of 6... ✓`);
                         } else if (eventType === "error") {
                             console.warn(`[SSE] Recipe slot ${payload.index} failed:`, payload.message);
                             setDashStreamingCount((c) => c + 1);
@@ -134,11 +145,13 @@ export default function App() {
             };
 
             while (true) {
+                if (dashGenRef.current !== gen) break; // abort stale reader
                 const { done, value } = await reader.read();
                 if (done) break;
                 processChunk(decoder.decode(value, { stream: true }));
             }
         } catch (err) {
+            if (dashGenRef.current !== gen) return; // ignore errors from stale searches
             console.error("AI Recommendation Error:", err);
             setDashStream(
                 "I'm sorry, I'm having trouble connecting to my creative kitchen: " +
@@ -156,7 +169,7 @@ export default function App() {
             if (token) {
                 try {
                     const response = await userAPI.getProfile();
-                    setUser(response.data);
+                    setUser(sanitizeUser(response.data));
                     if (response.data.savedRecipes) {
                         setSaved(response.data.savedRecipes);
                     }
@@ -188,11 +201,11 @@ export default function App() {
     };
 
     const login = async (u, token) => {
-        setUser(u);
+        setUser(sanitizeUser(u));
         if (token) {
             try {
                 const response = await userAPI.getProfile();
-                setUser(response.data);
+                setUser(sanitizeUser(response.data));
             } catch (err) {
                 console.error("Failed to fetch full profile after login", err);
             }
@@ -293,7 +306,7 @@ export default function App() {
                         xpAwarded: amount,
                     });
                     if (recordRes.data?.user) {
-                        setUser(recordRes.data.user);
+                        setUser(sanitizeUser(recordRes.data.user));
                         return; // Done
                     }
                 } catch (recordErr) {
@@ -303,7 +316,7 @@ export default function App() {
 
             // Fallback: Update local state with the authoritative values from the DB if recordCook didn't
             if (res.data?.user) {
-                setUser(res.data.user);
+                setUser(sanitizeUser(res.data.user));
             }
         } catch (err) {
             console.error(

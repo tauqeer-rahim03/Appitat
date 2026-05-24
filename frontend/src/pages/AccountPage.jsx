@@ -1,16 +1,64 @@
 import { useState, useEffect } from "react";
 import { useApp } from "../context/AppContext";
-import { FiClock, FiHeart, FiUser, FiEdit2, FiAward, FiLogOut } from "react-icons/fi";
+import { FiClock, FiHeart, FiUser, FiEdit2, FiAward, FiLogOut, FiSend, FiCheckCircle, FiMessageSquare } from "react-icons/fi";
 import { FaFire } from "react-icons/fa";
 import { RECIPES } from "../data/constants";
 import { AccountPersonalizationCard } from "../components/AccountPersonalizationCard";
 import { AccountPantryCard } from "../components/AccountPantryCard";
 import { AccountBadgesCard } from "../components/AccountBadgesCard";
 import { resolvePic } from "../lib/utils";
+import { feedbackAPI } from "../lib/api";
+
+const FEEDBACK_CATEGORIES = [
+    "Recipe Quality",
+    "AI Accuracy",
+    "UI/UX",
+    "Performance",
+    "Missing Feature",
+    "Other",
+];
+
+const RATING_LABELS = ["", "Poor", "Fair", "Good", "Great", "Excellent"];
 
 export default function AccountPage() {
     const { user, saved, toggleSave, navigate, logout } = useApp();
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+    // Feedback tab state
+    const [fbRating, setFbRating] = useState(0);
+    const [fbCategories, setFbCategories] = useState([]);
+    const [fbMessage, setFbMessage] = useState("");
+    const [fbSubmitting, setFbSubmitting] = useState(false);
+    const [fbDone, setFbDone] = useState(false);
+    const [fbError, setFbError] = useState("");
+
+    const toggleFbCategory = (cat) =>
+        setFbCategories((prev) =>
+            prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
+        );
+
+    const handleFbSubmit = async (e) => {
+        e.preventDefault();
+        if (!fbRating) return setFbError("Please choose a star rating.");
+        setFbError("");
+        setFbSubmitting(true);
+        try {
+            await feedbackAPI.submit({ rating: fbRating, categories: fbCategories, message: fbMessage });
+            setFbDone(true);
+        } catch {
+            setFbError("Something went wrong. Please try again.");
+        } finally {
+            setFbSubmitting(false);
+        }
+    };
+
+    const resetFeedback = () => {
+        setFbRating(0);
+        setFbCategories([]);
+        setFbMessage("");
+        setFbDone(false);
+        setFbError("");
+    };
 
     const [activeTab, setActiveTab] = useState("cookbook");
 
@@ -94,7 +142,7 @@ export default function AccountPage() {
                              "User"}
                         </h1>
                         <p className="text-brand-bg/70 text-[14px] md:text-[15px] flex items-center justify-center gap-2">
-                            {user?.email || ""}
+                            {typeof user?.email === 'string' ? user.email : ""}
                         </p>
                         {user?.experience && typeof user.experience === 'string' && (
                             <p className="text-white/70 text-[13px] uppercase tracking-wider font-bold mt-3 bg-black/20 inline-block px-3 py-1 rounded-full border border-white/10">
@@ -131,6 +179,12 @@ export default function AccountPage() {
                         onClick={() => setActiveTab("history")}
                     >
                         History
+                    </button>
+                    <button
+                        className={`text-[12px] md:text-sm font-bold uppercase tracking-wider px-4 md:px-5 py-2.5 rounded-xl whitespace-nowrap transition-all shrink-0 min-h-[40px] active:scale-95 ${activeTab === "feedback" ? "bg-brand-primary text-brand-bg shadow-md" : "text-brand-primary/60 hover:bg-brand-primary/5 hover:text-brand-primary"}`}
+                        onClick={() => setActiveTab("feedback")}
+                    >
+                        Feedback
                     </button>
                 </div>
             </div>
@@ -240,34 +294,43 @@ export default function AccountPage() {
                                 Cooking History
                             </h2>
                             <div className="flex flex-col gap-4">
-                                {(user.history && user.history.length > 0) ? (
-                                    user.history.map((h, idx) => (
-                                        <div
-                                            key={h.recipeId || idx}
-                                            className="flex gap-3 items-center"
-                                        >
+                                {(user.history && Array.isArray(user.history) && user.history.length > 0) ? (
+                                    user.history.map((h, idx) => {
+                                        const recipeKey = String(h?.recipeId ?? h?._id ?? idx);
+                                        const emoji = typeof h?.emoji === 'string' ? h.emoji : '🍳';
+                                        const title = typeof h?.title === 'string' ? h.title : String(h?.title ?? '');
+                                        const xpAwarded = Number(h?.xpAwarded) || 0;
+                                        const cuisine = typeof h?.cuisine === 'string' ? h.cuisine : '';
+                                        const cookedAt = h?.cookedAt ? (() => { try { return new Date(h.cookedAt).toLocaleDateString(); } catch { return 'Recently'; } })() : 'Recently';
+
+                                        return (
                                             <div
-                                                className="w-[50px] h-[50px] rounded-xl flex items-center justify-center text-[22px] bg-brand-primary/5 text-brand-secondary"
+                                                key={recipeKey}
+                                                className="flex gap-3 items-center"
                                             >
-                                                {h.emoji || "🍳"}
-                                            </div>
-                                            <div className="flex-1">
-                                                <div className="flex justify-between items-center">
-                                                    <p className="font-bold text-brand-primary text-[14px] leading-tight">
-                                                        {h.title}
-                                                    </p>
-                                                    {h.xpAwarded > 0 && (
-                                                        <span className="text-[10px] font-black bg-brand-secondary/10 text-brand-secondary px-2 py-0.5 rounded-lg">
-                                                            +{h.xpAwarded} XP
-                                                        </span>
-                                                    )}
+                                                <div
+                                                    className="w-[50px] h-[50px] rounded-xl flex items-center justify-center text-[22px] bg-brand-primary/5 text-brand-secondary"
+                                                >
+                                                    {emoji}
                                                 </div>
-                                                <p className="text-[11px] text-brand-primary/80 mt-0.5 uppercase tracking-wider">
-                                                    {h.cuisine} • {h.cookedAt ? new Date(h.cookedAt).toLocaleDateString() : "Recently"}
-                                                </p>
+                                                <div className="flex-1">
+                                                    <div className="flex justify-between items-center">
+                                                        <p className="font-bold text-brand-primary text-[14px] leading-tight">
+                                                            {title}
+                                                        </p>
+                                                        {xpAwarded > 0 && (
+                                                            <span className="text-[10px] font-black bg-brand-secondary/10 text-brand-secondary px-2 py-0.5 rounded-lg">
+                                                                +{xpAwarded} XP
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-[11px] text-brand-primary/80 mt-0.5 uppercase tracking-wider">
+                                                        {cuisine}{cuisine ? ' • ' : ''}{cookedAt}
+                                                    </p>
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))
+                                        );
+                                    })
                                 ) : (
                                     <p className="text-sm text-brand-primary/50 text-center py-4">
                                         No cooking history yet. Time to get cooking!
@@ -315,7 +378,7 @@ export default function AccountPage() {
                             <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-6">
                                 {(saved || []).slice(0, 4).map((r, i) => (
                                     <div
-                                        key={r.id}
+                                        key={String(r.id ?? i)}
                                         className="card slide-up rounded-card overflow-hidden cursor-default"
                                         style={{
                                             animationDelay: `${i * 0.07}s`,
@@ -323,7 +386,7 @@ export default function AccountPage() {
                                     >
                                         <div
                                             className="h-1.5"
-                                            style={{ background: r.accent }}
+                                            style={{ background: typeof r.accent === 'string' ? r.accent : undefined }}
                                         />
                                         <div
                                             className="p-5"
@@ -336,33 +399,32 @@ export default function AccountPage() {
                                                     <div
                                                         className="w-[46px] h-[46px] rounded-xl flex items-center justify-center text-[22px]"
                                                         style={{
-                                                            background:
-                                                                r.accent + "33",
-                                                            color: r.accent,
+                                                            background: typeof r.accent === 'string' ? r.accent + "33" : undefined,
+                                                            color: typeof r.accent === 'string' ? r.accent : undefined,
                                                         }}
                                                     >
-                                                        {r.emoji}
+                                                        {typeof r.emoji === 'string' ? r.emoji : "🍽️"}
                                                     </div>
                                                     <div>
                                                         <p className="font-bold text-brand-primary text-[15px] leading-tight">
-                                                            {r.title}
+                                                            {typeof r.title === 'string' ? r.title : String(r.title ?? '')}
                                                         </p>
                                                         <p className="text-[11px] text-brand-primary/80 mt-1 uppercase tracking-wider">
-                                                            {r.cuisine}
+                                                            {typeof r.cuisine === 'string' ? r.cuisine : ''}
                                                         </p>
                                                     </div>
                                                 </div>
                                             </div>
                                             <p className="text-[13px] text-brand-primary/80 leading-relaxed mb-4">
-                                                {r.description ? `${r.description.slice(0, 80)}…` : ""}
+                                                {typeof r.description === 'string' && r.description ? `${r.description.slice(0, 80)}…` : ""}
                                             </p>
                                             <div className="flex flex-wrap gap-1.5 mb-4">
-                                                {r.tags?.map((t) => (
+                                                {Array.isArray(r.tags) && r.tags.map((t, ti) => (
                                                     <span
-                                                        key={t}
+                                                        key={typeof t === 'string' ? t : ti}
                                                         className="tag !text-[10px] pointer-events-none"
                                                     >
-                                                        {t}
+                                                        {typeof t === 'string' ? t : String(t ?? '')}
                                                     </span>
                                                 ))}
                                             </div>
@@ -370,11 +432,11 @@ export default function AccountPage() {
                                                 <div className="flex gap-3 text-xs text-brand-primary/80">
                                                     <span className="flex items-center gap-1">
                                                         <FiClock className="relative -top-[1px]" />{" "}
-                                                        {r.time}
+                                                        {typeof r.time === 'string' ? r.time : String(r.time ?? '')}
                                                     </span>
                                                     <span className="flex items-center gap-1">
                                                         <FaFire className="relative -top-[1px] text-brand-secondary" />{" "}
-                                                        {r.calories}
+                                                        {typeof r.calories === 'string' ? r.calories : String(r.calories ?? '')}
                                                     </span>
                                                 </div>
                                                 <button
@@ -390,6 +452,141 @@ export default function AccountPage() {
                                         </div>
                                     </div>
                                 ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {activeTab === "feedback" && (
+                    <div className="max-w-2xl mx-auto w-full slide-up">
+                        {fbDone ? (
+                            <div className="card rounded-card p-10 flex flex-col items-center text-center gap-5">
+                                <div className="w-14 h-14 rounded-full bg-brand-primary/10 flex items-center justify-center">
+                                    <FiCheckCircle className="text-brand-primary" size={28} />
+                                </div>
+                                <div>
+                                    <h2 className="serif text-2xl font-black text-brand-primary mb-2">Thank you</h2>
+                                    <p className="text-brand-primary/60 text-sm leading-relaxed max-w-xs mx-auto">
+                                        Your feedback has been sent. We will use it to keep improving Appitat.
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={resetFeedback}
+                                    className="btn-primary px-8 py-3 rounded-xl text-sm font-bold cursor-pointer mt-2"
+                                >
+                                    Submit Another
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="card rounded-card overflow-hidden">
+                                {/* Card Header */}
+                                <div
+                                    className="px-6 py-5 border-b border-brand-primary/10"
+                                    style={{
+                                        background: "var(--brand-primary)",
+                                    }}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
+                                            <FiMessageSquare className="text-brand-bg" size={17} />
+                                        </div>
+                                        <div>
+                                            <h2 className="serif text-xl font-black text-brand-bg leading-tight">Share Your Feedback</h2>
+                                            <p className="text-brand-bg/60 text-xs mt-0.5">Your suggestions directly shape Appitat</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Form */}
+                                <form onSubmit={handleFbSubmit} className="px-6 py-6 flex flex-col gap-6">
+                                    {/* Star Rating */}
+                                    <div>
+                                        <label className="block text-sm font-bold text-brand-primary/80 mb-3">Overall Rating *</label>
+                                        <div className="flex gap-2">
+                                            {[1, 2, 3, 4, 5].map((star) => (
+                                                <button
+                                                    key={star}
+                                                    type="button"
+                                                    onClick={() => setFbRating(star)}
+                                                    className={`text-4xl transition-all duration-150 hover:scale-110 focus:outline-none cursor-pointer leading-none ${
+                                                        star <= fbRating
+                                                            ? "text-brand-secondary"
+                                                            : "text-brand-primary/20 hover:text-brand-secondary/40"
+                                                    }`}
+                                                    aria-label={`${star} star${star !== 1 ? "s" : ""}`}
+                                                >
+                                                    &#9733;
+                                                </button>
+                                            ))}
+                                        </div>
+                                        {fbRating > 0 && (
+                                            <p className="text-xs text-brand-secondary font-bold mt-2 uppercase tracking-wider">
+                                                {RATING_LABELS[fbRating]}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    {/* Category Tags */}
+                                    <div>
+                                        <label className="block text-sm font-bold text-brand-primary/80 mb-3">
+                                            What is this about?{" "}
+                                            <span className="font-normal text-brand-primary/40">(optional)</span>
+                                        </label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {FEEDBACK_CATEGORIES.map((cat) => (
+                                                <button
+                                                    key={cat}
+                                                    type="button"
+                                                    onClick={() => toggleFbCategory(cat)}
+                                                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all duration-150 cursor-pointer ${
+                                                        fbCategories.includes(cat)
+                                                            ? "bg-brand-primary text-brand-bg shadow-sm"
+                                                            : "bg-brand-primary/8 text-brand-primary/70 hover:bg-brand-primary/15 border border-brand-primary/15"
+                                                    }`}
+                                                >
+                                                    {cat}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Message */}
+                                    <div>
+                                        <label
+                                            htmlFor="account-feedback-message"
+                                            className="block text-sm font-bold text-brand-primary/80 mb-3"
+                                        >
+                                            Tell us more{" "}
+                                            <span className="font-normal text-brand-primary/40">(optional)</span>
+                                        </label>
+                                        <textarea
+                                            id="account-feedback-message"
+                                            rows={5}
+                                            maxLength={1000}
+                                            value={fbMessage}
+                                            onChange={(e) => setFbMessage(e.target.value)}
+                                            placeholder="What could we do better? Any features you would love to see?"
+                                            className="w-full bg-brand-bg border border-brand-primary/20 text-brand-primary text-sm font-medium rounded-xl px-4 py-3 focus:outline-none focus:border-brand-secondary transition-colors resize-none placeholder:text-brand-primary/30"
+                                        />
+                                        <p className="text-right text-[11px] text-brand-primary/30 mt-1">
+                                            {fbMessage.length}/1000
+                                        </p>
+                                    </div>
+
+                                    {fbError && (
+                                        <p className="text-brand-accent text-sm font-semibold -mt-2">
+                                            {fbError}
+                                        </p>
+                                    )}
+
+                                    <button
+                                        type="submit"
+                                        disabled={fbSubmitting}
+                                        className="btn-primary w-full py-4 rounded-xl text-[15px] font-bold flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                                    >
+                                        {fbSubmitting ? "Sending..." : (<><FiSend size={15} /> Submit Feedback</>)}
+                                    </button>
+                                </form>
                             </div>
                         )}
                     </div>

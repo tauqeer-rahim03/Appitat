@@ -77,4 +77,8 @@ export const userAPI = {
     syncSavedRecipes: (savedRecipes) => api.post("/user/sync-saved", { savedRecipes }),
 };
 
+export const feedbackAPI = {
+    submit: (data) => api.post("/feedback", data),
+};
+
 export default api;

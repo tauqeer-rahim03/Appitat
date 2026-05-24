@@ -40,7 +40,7 @@ exports.updatePantry = async (req, res) => {
 };
 
 exports.getProfile = async (req, res) => {
-    try {
+    try {   
         const user = await User.findById(req.user.userId).select("-password");
         if (!user) return res.status(404).json({ message: "User not found" });
         res.status(200).json(user);

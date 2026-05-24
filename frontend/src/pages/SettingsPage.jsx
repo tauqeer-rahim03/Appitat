@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useApp } from "../context/AppContext";
-import { FiCamera, FiCheck, FiArrowLeft, FiAlertCircle, FiEye, FiEyeOff, FiUser } from "react-icons/fi";
+import { FiCamera, FiArrowLeft, FiAlertCircle, FiEye, FiEyeOff, FiUser } from "react-icons/fi";
 import { AccountPersonalizationCard } from "../components/AccountPersonalizationCard";
 import { AccountPantryCard } from "../components/AccountPantryCard";
 import { userAPI, authAPI } from "../lib/api";

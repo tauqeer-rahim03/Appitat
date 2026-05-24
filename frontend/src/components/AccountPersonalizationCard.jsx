@@ -27,7 +27,7 @@ export function AccountPersonalizationCard({
                     <div className="flex items-center gap-2">
                         {!editMode.age ? (
                             <span className="text-sm font-bold text-brand-primary">
-                                {user.age || "Not set"}
+                                {user.age != null ? String(user.age) : "Not set"}
                             </span>
                         ) : (
                             <input
@@ -64,7 +64,7 @@ export function AccountPersonalizationCard({
                     <div className="flex items-center gap-2">
                         {!editMode.experience ? (
                             <span className="text-sm font-bold text-brand-primary capitalize">
-                                {user.experience || "Not set"}
+                                {typeof user.experience === 'string' ? user.experience : (user.experience != null ? String(user.experience) : "Not set")}
                             </span>
                         ) : (
                             <select
@@ -165,12 +165,12 @@ export function AccountPersonalizationCard({
                                         None
                                     </span>
                                 )}
-                            {(user.allergies || []).map((t) => (
+                            {(user.allergies || []).map((t, idx) => (
                                 <span
-                                    key={t}
+                                    key={typeof t === 'string' ? t : idx}
                                     className="tag text-[14px]! flex items-center gap-1 bg-red-100 text-red-800 border-red-200"
                                 >
-                                    {t}
+                                    {typeof t === 'string' ? t : (t?.name ?? String(t))}
                                     {editMode.allergies && (
                                         <button
                                             className="bg-none border-none cursor-pointer p-0 flex items-center justify-center hover:text-red-500 transition-colors"
@@ -254,12 +254,12 @@ export function AccountPersonalizationCard({
                                         None
                                     </span>
                                 )}
-                            {(user.neverShowMe || []).map((t) => (
+                            {(user.neverShowMe || []).map((t, idx) => (
                                 <span
-                                    key={t}
+                                    key={typeof t === 'string' ? t : idx}
                                     className="tag !text-[14px] flex items-center gap-1 bg-red-100 text-red-800 border-red-200"
                                 >
-                                    {t}
+                                    {typeof t === 'string' ? t : (t?.name ?? String(t))}
                                     {editMode.neverShowMe && (
                                         <button
                                             className="bg-none border-none cursor-pointer p-0 flex items-center justify-center hover:text-red-500 transition-colors"

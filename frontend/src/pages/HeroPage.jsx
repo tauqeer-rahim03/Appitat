@@ -134,7 +134,7 @@ export default function HeroPage() {
                     <div className="w-full md:w-[50%] slide-up stagger-2 relative flex flex-col gap-4 mt-16 md:mt-0 items-center md:items-end px-4 md:px-0">
                         {RECIPES.slice(0, 3).map((r, i) => (
                             <div
-                                key={r.id}
+                                key={r.id ? `${r.id}-${i}` : `hero-recipe-${i}`}
                                 className="glass-card p-3 md:p-4 flex items-center gap-3 md:gap-4 w-full max-w-[420px] hover:-translate-y-1 transition-transform active:scale-[0.98]"
                                 style={{
                                     opacity: 0,

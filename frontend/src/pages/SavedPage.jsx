@@ -51,10 +51,10 @@ export default function SavedPage() {
                         </button>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4 md:gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                         {saved.map((r, i) => (
                             <RecipeCard
-                                key={r.id}
+                                key={r.id ? `${r.id}-${i}` : `saved-recipe-${i}`}
                                 r={r}
                                 index={i}
                                 isSaved={true}
