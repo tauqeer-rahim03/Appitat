@@ -351,6 +351,17 @@ export default function App() {
         }
     };
 
+    const syncUserXpAndLevel = (xp, level) => {
+        if (!user) return;
+        const updatedUser = {
+            ...user,
+            xp: Number(xp),
+            level: Number(level),
+        };
+        setUser(updatedUser);
+        checkBadgeUnlocks(user, updatedUser);
+    };
+
     const showNav =
         location.pathname !== "/login" && location.pathname !== "/signup";
 
@@ -362,6 +373,7 @@ export default function App() {
                 logout,
                 updateUser,
                 addXp,
+                syncUserXpAndLevel,
                 handleCookDay,
                 saved,
                 toggleSave,

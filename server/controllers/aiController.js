@@ -14,7 +14,7 @@ if (!process.env.GROQ_API_KEY) {
 }
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || "");
-const AI_MODEL = "gemini-2.0-flash-lite";
+const AI_MODEL = "gemini-3-flash-preview";
 
 const handleError = (
     res,
@@ -263,8 +263,21 @@ exports.identifyIngredientsAndRecommend = async (req, res) => {
             generationConfig: { responseMimeType: "application/json" },
         });
 
-        const prompt = `Analyze this image. List ingredients seen and suggest 3 distinct recipes. 
-        Return ONLY a JSON object with 'identifiedIngredients' (array) and 'recipes' (array of recipe objects).`;
+        const prompt = `Analyze this image. List ingredients seen and suggest 3 distinct recipes.
+        Return ONLY a JSON object with 'identifiedIngredients' (array of strings) and 'recipes' (array of recipe objects).
+        Each recipe object inside the 'recipes' array must have the following exact fields:
+        - title (string)
+        - emoji (string, a single emoji character)
+        - description (string, 2 sentences)
+        - cuisine (string)
+        - ingredients (array of strings with quantities)
+        - steps (array of strings, detailing 8-10 cooking steps)
+        - time (string, e.g. "30 mins")
+        - calories (number)
+        - difficulty (string: "Easy", "Medium", or "Hard")
+        - servings (number)
+        - accent (string, a hex color code, e.g. "#FF6B6B")
+        - tags (array of strings)`;
 
         const result = await model.generateContent([prompt, imageData]);
         const text = result.response
