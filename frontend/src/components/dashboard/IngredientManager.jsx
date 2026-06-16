@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useApp } from "../../context/AppContext";
 import { FiCamera, FiX, FiPlus, FiFileText } from "react-icons/fi";
+import { aiAPI } from "../../lib/api";
 
 const QUICK_ADD_INGREDIENTS = [
     "Garlic",
@@ -12,45 +13,70 @@ const QUICK_ADD_INGREDIENTS = [
 ];
 
 export default function IngredientManager() {
-    const { ingredients, setIngredients } = useApp();
+    const { 
+        ingredients, 
+        setIngredients, 
+        setResults, 
+        syncUserXpAndLevel 
+    } = useApp();
     const [ingredientInput, setIngredientInput] = useState("");
     const [qtyInput, setQtyInput] = useState("");
-    const [imageInputs, setImageInputs] = useState([]);
-    const [imagePreviews, setImagePreviews] = useState([]);
+    const [scanning, setScanning] = useState(false);
 
     const handleImageUpload = async (e) => {
-        const files = Array.from(e.target.files);
-        if (files.length === 0) return;
+        const file = e.target.files[0];
+        if (!file) return;
 
-        setImageInputs((prev) => [...prev, ...files]);
+        setScanning(true);
 
-        const newPreviews = await Promise.all(
-            files.map((file) => {
-                return new Promise((resolve) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => resolve(reader.result);
-                    reader.readAsDataURL(file);
+        const formData = new FormData();
+        formData.append("image", file);
+
+        try {
+            const response = await aiAPI.visionRecommend(formData);
+            const { identifiedIngredients, recipes, savedRecipeId, xpStatus } = response.data;
+
+            if (identifiedIngredients && identifiedIngredients.length > 0) {
+                // Add identified ingredients as chips
+                const newChips = identifiedIngredients.map(ing => ({
+                    id: `${Date.now()}-${Math.random()}`,
+                    type: "text",
+                    name: ing,
+                    qty: "1",
+                    image: null
+                }));
+
+                setIngredients((prev) => {
+                    const existingNames = new Set(prev.map((p) => p.name.toLowerCase()));
+                    const filteredNew = newChips.filter((c) => !existingNames.has(c.name.toLowerCase()));
+                    return [...prev, ...filteredNew];
                 });
-            }),
-        );
 
-        setImagePreviews((prev) => [...prev, ...newPreviews]);
+                // Set generated recipes in context
+                if (recipes && recipes.length > 0) {
+                    const mappedRecipes = recipes.map((recipe, idx) => ({
+                        ...recipe,
+                        id: idx === 0 ? savedRecipeId : `vision-${Date.now()}-${idx}`,
+                        isAIGenerated: true
+                    }));
+                    setResults(mappedRecipes);
+                }
 
-        if (!ingredientInput.trim() && files.length === 1) {
-            setIngredientInput(files[0].name.split(".")[0]);
-        }
-    };
+                // Sync XP and levels
+                if (xpStatus) {
+                    syncUserXpAndLevel(xpStatus.xp, xpStatus.level);
+                }
 
-    const handleClearImage = (e, indexToRemove = null) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        if (indexToRemove !== null) {
-            setImageInputs((prev) => prev.filter((_, i) => i !== indexToRemove));
-            setImagePreviews((prev) => prev.filter((_, i) => i !== indexToRemove));
-        } else {
-            setImageInputs([]);
-            setImagePreviews([]);
+                alert(`Gemini identified ${identifiedIngredients.length} ingredients: ${identifiedIngredients.join(", ")}! +30 XP gained.`);
+            } else {
+                alert("Gemini scanned the image but couldn't identify any ingredients. Please try another photo.");
+            }
+        } catch (err) {
+            console.error("Vision recognition error:", err);
+            alert("Error scanning image: " + (err.response?.data?.message || err.message || "Unknown error"));
+        } finally {
+            setScanning(false);
+            e.target.value = "";
         }
     };
 
@@ -59,34 +85,20 @@ export default function IngredientManager() {
         const nameVal = ingredientInput.trim();
         const qtyVal = qtyInput.trim();
 
-        if (!nameVal && imageInputs.length === 0) return;
+        if (!nameVal) return;
 
-        const newIngredients = [];
-        if (imageInputs.length > 0) {
-            imageInputs.forEach((file, index) => {
-                newIngredients.push({
-                    id: Date.now().toString() + index,
-                    type: "image",
-                    name: imageInputs.length === 1 && nameVal ? nameVal : file.name.split(".")[0],
-                    qty: qtyVal || "1",
-                    image: imagePreviews[index],
-                });
-            });
-        } else {
-            newIngredients.push({
+        setIngredients((p) => [
+            ...p,
+            {
                 id: Date.now().toString(),
                 type: "text",
-                name: nameVal || "Uploaded Image",
+                name: nameVal,
                 qty: qtyVal || "1",
                 image: null,
-            });
-        }
-
-        setIngredients((p) => [...p, ...newIngredients]);
+            },
+        ]);
         setIngredientInput("");
         setQtyInput("");
-        setImageInputs([]);
-        setImagePreviews([]);
     };
 
     const handleAddQuickIngredient = (ingredientName) => {
@@ -105,77 +117,76 @@ export default function IngredientManager() {
     };
 
     return (
-        <div className="bg-brand-card rounded-2xl md:rounded-3xl p-4 md:p-6 lg:p-8 shadow-2xl shadow-brand-primary/10 border-2 border-brand-primary/20 border-solid mb-6 md:mb-8">
+        <div className="relative bg-brand-card rounded-2xl md:rounded-3xl p-4 md:p-6 lg:p-8 shadow-2xl shadow-brand-primary/10 border-2 border-brand-primary/20 border-solid mb-6 md:mb-8">
+            {scanning && (
+                <div className="absolute inset-0 bg-brand-card/90 backdrop-blur-md z-50 rounded-2xl md:rounded-3xl flex flex-col items-center justify-center p-6 border-2 border-brand-primary/20 border-solid animate-fadeIn">
+                    <div className="relative w-24 h-24 mb-6">
+                        <div className="absolute inset-0 rounded-full border-4 border-brand-primary/20 border-t-brand-secondary animate-spin"></div>
+                        <div className="absolute inset-2 bg-brand-secondary/10 rounded-full animate-pulse flex items-center justify-center">
+                            <FiCamera size={36} className="text-brand-secondary animate-bounce" />
+                        </div>
+                    </div>
+                    <h3 className="serif text-xl font-black text-brand-primary mb-2 text-center">
+                        Scanning Image with Gemini AI...
+                    </h3>
+                    <p className="text-sm text-brand-primary/60 text-center max-w-[280px]">
+                        Analyzing ingredients and planning your personalized recipes. This will take just a few seconds.
+                    </p>
+                </div>
+            )}
+
             <form onSubmit={addIngredient}>
                 <div className="flex flex-col gap-3 md:gap-4 mb-4 md:mb-6">
                     <div className="flex flex-col md:flex-row gap-3 md:gap-4">
-                    <div className="flex-1 relative group">
-                        <input
-                            type="text"
-                            placeholder="Ingredient name (e.g. Garlic)"
-                            className="w-full bg-brand-bg/80 border-2 border-brand-primary/20 rounded-xl md:rounded-2xl px-4 md:px-5 py-3.5 md:py-4 text-brand-primary font-bold focus:border-brand-secondary focus:ring-4 focus:ring-brand-secondary/10 outline-none transition-all placeholder:text-brand-primary/40 shadow-sm"
-                            value={ingredientInput}
-                            onChange={(e) => setIngredientInput(e.target.value)}
-                        />
-                    </div>
-                    <div className="w-full md:w-40">
-                        <input
-                            type="text"
-                            placeholder="Qty (e.g. 500g)"
-                            className="w-full bg-brand-bg/80 border-2 border-brand-primary/20 rounded-xl md:rounded-2xl px-4 md:px-5 py-3.5 md:py-4 text-brand-primary font-bold focus:border-brand-secondary focus:ring-4 focus:ring-brand-secondary/10 outline-none transition-all placeholder:text-brand-primary/40 shadow-sm"
-                            value={qtyInput}
-                            onChange={(e) => setQtyInput(e.target.value)}
-                        />
-                    </div>
+                        <div className="flex-1 relative group">
+                            <input
+                                type="text"
+                                placeholder="Ingredient name (e.g. Garlic)"
+                                className="w-full bg-brand-bg/80 border-2 border-brand-primary/20 rounded-xl md:rounded-2xl px-4 md:px-5 py-3.5 md:py-4 text-brand-primary font-bold focus:border-brand-secondary focus:ring-4 focus:ring-brand-secondary/10 outline-none transition-all placeholder:text-brand-primary/40 shadow-sm"
+                                value={ingredientInput}
+                                onChange={(e) => setIngredientInput(e.target.value)}
+                                disabled={scanning}
+                            />
+                        </div>
+                        <div className="w-full md:w-40">
+                            <input
+                                type="text"
+                                placeholder="Qty (e.g. 500g)"
+                                className="w-full bg-brand-bg/80 border-2 border-brand-primary/20 rounded-xl md:rounded-2xl px-4 md:px-5 py-3.5 md:py-4 text-brand-primary font-bold focus:border-brand-secondary focus:ring-4 focus:ring-brand-secondary/10 outline-none transition-all placeholder:text-brand-primary/40 shadow-sm"
+                                value={qtyInput}
+                                onChange={(e) => setQtyInput(e.target.value)}
+                                disabled={scanning}
+                            />
+                        </div>
                     </div>
                     <div className="flex gap-3">
-                    <button
-                        type="submit"
-                        className="bg-brand-primary text-white px-6 min-h-[48px] rounded-xl md:rounded-2xl hover:bg-brand-primary/90 active:scale-95 transition-all flex items-center justify-center cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed group shadow-lg shadow-brand-primary/20 flex-1 md:flex-none"
-                        style={{ minWidth: "64px" }}
-                        disabled={!ingredientInput.trim() && imageInputs.length === 0}
-                    >
-                        <FiPlus size={28} className="group-hover:rotate-90 transition-transform duration-300" />
-                    </button>
-                    <div className="relative">
-                        <input
-                            type="file"
-                            accept="image/*"
-                            multiple
-                            className="hidden"
-                            id="ingredient-image"
-                            onChange={handleImageUpload}
-                        />
-                        <label
-                            htmlFor="ingredient-image"
-                            className="h-full min-h-[48px] bg-brand-bg border-2 border-brand-primary/20 rounded-xl md:rounded-2xl px-5 md:px-6 py-3 md:py-4 flex items-center gap-2 md:gap-3 cursor-pointer hover:border-brand-secondary hover:text-brand-secondary hover:bg-brand-secondary/5 transition-all text-brand-primary font-bold group shadow-sm"
+                        <button
+                            type="submit"
+                            className="bg-brand-primary text-white px-6 min-h-[48px] rounded-xl md:rounded-2xl hover:bg-brand-primary/90 active:scale-95 transition-all flex items-center justify-center cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed group shadow-lg shadow-brand-primary/20 flex-1 md:flex-none"
+                            style={{ minWidth: "64px" }}
+                            disabled={!ingredientInput.trim() || scanning}
                         >
-                            <FiCamera size={22} className="group-hover:scale-110 transition-transform" />
-                            <span className="hidden sm:inline">Add Photo</span>
-                        </label>
-                    </div>
+                            <FiPlus size={28} className="group-hover:rotate-90 transition-transform duration-300" />
+                        </button>
+                        <div className="relative">
+                            <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                id="ingredient-image"
+                                onChange={handleImageUpload}
+                                disabled={scanning}
+                            />
+                            <label
+                                htmlFor="ingredient-image"
+                                className="h-full min-h-[48px] bg-brand-bg border-2 border-brand-primary/20 rounded-xl md:rounded-2xl px-5 md:px-6 py-3 md:py-4 flex items-center gap-2 md:gap-3 cursor-pointer hover:border-brand-secondary hover:text-brand-secondary hover:bg-brand-secondary/5 transition-all text-brand-primary font-bold group shadow-sm"
+                            >
+                                <FiCamera size={22} className="group-hover:scale-110 transition-transform" />
+                                <span className="hidden sm:inline">Add Photo</span>
+                            </label>
+                        </div>
                     </div>
                 </div>
-
-                {imagePreviews.length > 0 && (
-                    <div className="flex flex-wrap gap-3 mb-6 animate-fadeIn">
-                        {imagePreviews.map((prev, idx) => (
-                            <div key={idx} className="relative group">
-                                <img
-                                    src={prev}
-                                    alt="Preview"
-                                    className="w-20 h-20 object-cover rounded-xl border-2 border-brand-secondary ring-4 ring-brand-secondary/10"
-                                />
-                                <button
-                                    onClick={(e) => handleClearImage(e, idx)}
-                                    className="absolute -top-2 -right-2 bg-brand-secondary text-white w-6 h-6 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform cursor-pointer border-2 border-brand-card"
-                                >
-                                    <FiX size={14} />
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                )}
 
                 <div className="flex items-center gap-2 md:gap-3 overflow-x-auto hide-scrollbar pb-1 -mx-1 px-1">
                     <span className="text-[11px] md:text-[12px] font-black text-brand-primary/40 uppercase tracking-widest mr-1 md:mr-2 whitespace-nowrap shrink-0">
@@ -187,6 +198,7 @@ export default function IngredientManager() {
                             type="button"
                             onClick={() => handleAddQuickIngredient(ing)}
                             className="px-3 md:px-4 py-2 md:py-1.5 rounded-full border border-brand-primary/10 text-[12px] md:text-[13px] font-bold text-brand-primary/60 hover:border-brand-secondary hover:text-brand-secondary hover:bg-brand-secondary/5 transition-all cursor-pointer whitespace-nowrap shrink-0 min-h-[36px] active:scale-95"
+                            disabled={scanning}
                         >
                             + {ing}
                         </button>
@@ -203,15 +215,9 @@ export default function IngredientManager() {
                                 key={ing.id}
                                 className="group flex items-center gap-3 bg-brand-bg/80 border border-brand-primary/10 pl-2 pr-4 py-2 rounded-2xl hover:border-brand-secondary/30 transition-all hover:shadow-lg hover:shadow-brand-secondary/5 animate-slideUp"
                             >
-                                {ing.type === "image" ? (
-                                    <div className="w-10 h-10 rounded-xl overflow-hidden border border-brand-primary/10 shadow-sm relative shrink-0">
-                                        <img src={ing.image} className="w-full h-full object-cover" alt={ing.name} />
-                                    </div>
-                                ) : (
-                                    <div className="w-10 h-10 rounded-xl bg-brand-primary/5 flex items-center justify-center text-brand-primary/40 shrink-0">
-                                        <FiFileText size={18} />
-                                    </div>
-                                )}
+                                <div className="w-10 h-10 rounded-xl bg-brand-primary/5 flex items-center justify-center text-brand-primary/40 shrink-0">
+                                    <FiFileText size={18} />
+                                </div>
                                 <div className="leading-tight">
                                     <p className="text-[14px] font-black text-brand-primary capitalize">
                                         {ing.name}

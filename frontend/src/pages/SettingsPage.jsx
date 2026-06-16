@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { useApp } from "../context/AppContext";
-import { FiCamera, FiCheck, FiArrowLeft } from "react-icons/fi";
+import { FiCamera, FiArrowLeft, FiAlertCircle, FiEye, FiEyeOff, FiUser } from "react-icons/fi";
 import { AccountPersonalizationCard } from "../components/AccountPersonalizationCard";
 import { AccountPantryCard } from "../components/AccountPantryCard";
-import { userAPI } from "../lib/api";
+import { userAPI, authAPI } from "../lib/api";
 import { resolvePic } from "../lib/utils";
 
 export default function SettingsPage() {
@@ -30,6 +30,14 @@ export default function SettingsPage() {
 
     const profilePicRef = useRef(null);
     const coverPicRef = useRef(null);
+
+    // Password Reset States
+    const [pwdModalStep, setPwdModalStep] = useState(null); // 'request', 'code', 'done'
+    const [pwdCode, setPwdCode] = useState("");
+    const [pwdNewPassword, setPwdNewPassword] = useState("");
+    const [pwdShowNewPassword, setPwdShowNewPassword] = useState(false);
+    const [pwdError, setPwdError] = useState("");
+    const [pwdLoading, setPwdLoading] = useState(false);
 
     useEffect(() => {
         if (!user) {
@@ -74,6 +82,8 @@ export default function SettingsPage() {
                 cookDays: localUser.cookDays, // Sync cookDays
                 xp: localUser.xp,
                 level: localUser.level,
+                profilePic: localUser.profilePic,
+                coverPic: localUser.coverPic,
             });
 
             updateUser(localUser);
@@ -128,6 +138,57 @@ export default function SettingsPage() {
         handleLocalUpdate({ [field]: currentList.filter((t) => t !== value) });
     };
 
+    // ====== PASSWORD RESET HANDLERS ======
+    const requestPasswordReset = async () => {
+        setPwdError("");
+        setPwdLoading(true);
+        try {
+            await authAPI.forgotPassword({ email: user.email });
+            setPwdModalStep("code");
+            setPwdLoading(false);
+        } catch (err) {
+            setPwdLoading(false);
+            if (err.response?.status === 400 && err.response?.data?.message?.includes("Google Sign-In")) {
+                setPwdError("This account is linked to Google. Password change is not applicable.");
+                setPwdModalStep("error");
+            } else {
+                setPwdError(err.response?.data?.message || "Failed to request password reset.");
+                setPwdModalStep("error");
+            }
+        }
+    };
+
+    const submitPasswordReset = async (e) => {
+        e.preventDefault();
+        setPwdError("");
+        if (!pwdCode || !pwdNewPassword) {
+            return setPwdError("Please fill in all fields.");
+        }
+        if (pwdNewPassword.length < 6) {
+            return setPwdError("Password must be at least 6 characters.");
+        }
+        setPwdLoading(true);
+        try {
+            await authAPI.resetPassword({
+                email: user.email,
+                code: pwdCode,
+                newPassword: pwdNewPassword,
+            });
+            setPwdModalStep("done");
+            setPwdLoading(false);
+        } catch (err) {
+            setPwdLoading(false);
+            setPwdError(err.response?.data?.message || "Something went wrong.");
+        }
+    };
+
+    const closePwdModal = () => {
+        setPwdModalStep(null);
+        setPwdCode("");
+        setPwdNewPassword("");
+        setPwdError("");
+    };
+
     return (
         <div className="min-h-screen bg-brand-bg pb-4 md:pb-20 has-bottom-nav">
             {/* Header / Cover Area */}
@@ -153,12 +214,25 @@ export default function SettingsPage() {
                 </button>
 
                 {/* Cover Image Upload */}
-                <button
-                    className="absolute top-4 right-4 bg-black/40 hover:bg-black/60 text-white backdrop-blur-md px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-2 transition-colors z-20"
-                    onClick={() => coverPicRef.current?.click()}
-                >
-                    <FiCamera /> Edit Cover
-                </button>
+                <div className="absolute top-4 right-4 flex flex-col items-end gap-2 z-20">
+                    <button
+                        className="bg-black/40 hover:bg-black/60 text-white backdrop-blur-md px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-2 transition-colors cursor-pointer"
+                        onClick={() => coverPicRef.current?.click()}
+                    >
+                        <FiCamera /> Edit Cover
+                    </button>
+                    {localUser.coverPic && (
+                        <button
+                            className="bg-black/40 hover:bg-red-500/80 text-white backdrop-blur-md px-3 py-1 rounded-lg text-[11px] font-bold transition-colors cursor-pointer"
+                            onClick={() => {
+                                setCoverFile(null);
+                                handleLocalUpdate({ coverPic: "" });
+                            }}
+                        >
+                            Remove Cover
+                        </button>
+                    )}
+                </div>
                 <input
                     type="file"
                     accept="image/*"
@@ -181,11 +255,7 @@ export default function SettingsPage() {
                                     className="w-full h-full object-cover"
                                 />
                             ) : (
-                                (localUser.name && localUser.name[0]) ? (
-                                    localUser.name[0].toUpperCase()
-                                ) : (
-                                    "U"
-                                )
+                                <FiUser className="w-1/2 h-1/2 opacity-80" />
                             )}
                             <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity">
                                 <FiCamera className="text-white text-2xl" />
@@ -200,6 +270,18 @@ export default function SettingsPage() {
                         />
                     </button>
 
+                    {localUser.profilePic && (
+                        <button
+                            className="text-white bg-black/40 hover:bg-black/60 px-3 py-1 rounded-lg text-xs font-bold transition-colors mb-4 backdrop-blur-sm flex items-center gap-1.5 cursor-pointer"
+                            onClick={() => {
+                                setProfileFile(null);
+                                handleLocalUpdate({ profilePic: "" });
+                            }}
+                        >
+                            Remove Picture
+                        </button>
+                    )}
+
                     <h1 className="serif text-[32px] font-black text-brand-bg mb-2">
                         Settings
                     </h1>
@@ -210,41 +292,62 @@ export default function SettingsPage() {
             <div className="max-w-[1000px] mx-auto px-4 md:px-6 mt-6 md:mt-8">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* Basic Info Card */}
-                    <div className="card rounded-card p-6 slide-up">
-                        <h2 className="serif text-[22px] font-black text-brand-primary mb-5">
-                            Basic Information
-                        </h2>
-                        <div className="flex flex-col gap-4">
-                            <div>
-                                <label className="block text-sm font-bold text-brand-primary/80 mb-2">
-                                    Display Name
-                                </label>
-                                <input
-                                    className="w-full bg-brand-bg border border-brand-primary/20 text-brand-primary font-medium rounded-xl px-4 py-3 focus:outline-none focus:border-brand-secondary transition-colors"
-                                    value={localUser.name}
-                                    onChange={(e) =>
-                                        handleLocalUpdate({
-                                            name: e.target.value,
-                                        })
-                                    }
-                                    placeholder="Your Name"
-                                />
+                    <div className="card rounded-card p-6 slide-up flex flex-col justify-between">
+                        <div>
+                            <h2 className="serif text-[22px] font-black text-brand-primary mb-5">
+                                Basic Information
+                            </h2>
+                            <div className="flex flex-col gap-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-brand-primary/80 mb-2">
+                                        Display Name
+                                    </label>
+                                    <input
+                                        className="w-full bg-brand-bg border border-brand-primary/20 text-brand-primary font-medium rounded-xl px-4 py-3 focus:outline-none focus:border-brand-secondary transition-colors"
+                                        value={localUser.name}
+                                        onChange={(e) =>
+                                            handleLocalUpdate({
+                                                name: e.target.value,
+                                            })
+                                        }
+                                        placeholder="Your Name"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-brand-primary/80 mb-2">
+                                        Email Address
+                                    </label>
+                                    <input
+                                        className="w-full bg-brand-bg border border-brand-primary/20 text-brand-primary font-medium rounded-xl px-4 py-3 focus:outline-none focus:border-brand-secondary transition-colors"
+                                        value={localUser.email}
+                                        onChange={(e) =>
+                                            handleLocalUpdate({
+                                                email: e.target.value,
+                                            })
+                                        }
+                                        placeholder="Email Address"
+                                        disabled // Don't allow changing email as it's the primary key for auth
+                                    />
+                                </div>
                             </div>
-                            <div>
-                                <label className="block text-sm font-bold text-brand-primary/80 mb-2">
-                                    Email Address
-                                </label>
-                                <input
-                                    className="w-full bg-brand-bg border border-brand-primary/20 text-brand-primary font-medium rounded-xl px-4 py-3 focus:outline-none focus:border-brand-secondary transition-colors"
-                                    value={localUser.email}
-                                    onChange={(e) =>
-                                        handleLocalUpdate({
-                                            email: e.target.value,
-                                        })
-                                    }
-                                    placeholder="Email Address"
-                                />
-                            </div>
+                        </div>
+
+                        {/* Security Section embedded inside Basic Info */}
+                        <div className="mt-8 pt-6 border-t border-brand-primary/10">
+                            <h3 className="text-sm font-black text-brand-primary mb-2">Security</h3>
+                            <p className="text-xs text-brand-primary/60 mb-4 leading-relaxed">
+                                Need to change your password? We will send a verification code to <strong>{user.email}</strong>.
+                            </p>
+                            <button
+                                className="px-5 py-2.5 text-sm font-bold text-brand-primary bg-brand-primary/5 hover:bg-brand-primary/10 transition-colors active:scale-[0.98] rounded-xl cursor-pointer disabled:opacity-50"
+                                onClick={() => {
+                                    setPwdModalStep("request");
+                                    requestPasswordReset();
+                                }}
+                                disabled={pwdLoading || pwdModalStep === "request"}
+                            >
+                                {pwdModalStep === "request" && pwdLoading ? "Sending Code..." : "Change Password"}
+                            </button>
                         </div>
                     </div>
 
@@ -301,7 +404,7 @@ export default function SettingsPage() {
 
             {/* Unsaved Changes Modal */}
             {showDiscardModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-6 slide-up">
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-6 slide-up">
                     <div className="bg-brand-bg rounded-card max-w-sm w-full p-6 shadow-2xl scale-up border flex flex-col gap-4 border-brand-primary/10">
                         <h3 className="serif text-xl font-black text-brand-primary">
                             Unsaved Changes
@@ -312,13 +415,13 @@ export default function SettingsPage() {
                         </p>
                         <div className="flex justify-end gap-3 mt-2">
                             <button
-                                className="px-5 py-2.5 text-sm font-bold text-brand-primary/50 hover:text-brand-primary transition-colors hover:bg-black/5 rounded-xl"
+                                className="px-5 py-2.5 text-sm font-bold text-brand-primary/50 hover:text-brand-primary transition-colors hover:bg-black/5 rounded-xl cursor-pointer"
                                 onClick={() => setShowDiscardModal(false)}
                             >
                                 Cancel
                             </button>
                             <button
-                                className="px-5 py-2.5 text-sm font-bold bg-red-100 text-red-600 hover:bg-red-200 rounded-xl transition-colors"
+                                className="px-5 py-2.5 text-sm font-bold bg-red-100 text-red-600 hover:bg-red-200 rounded-xl transition-colors cursor-pointer"
                                 onClick={() => {
                                     setHasUnsavedChanges(false);
                                     navigate("account");
@@ -327,12 +430,119 @@ export default function SettingsPage() {
                                 Discard
                             </button>
                             <button
-                                className="px-5 py-2.5 text-sm font-bold bg-brand-secondary text-white hover:bg-brand-secondary/90 rounded-xl shadow-md transition-colors"
+                                className="px-5 py-2.5 text-sm font-bold bg-brand-secondary text-white hover:bg-brand-secondary/90 rounded-xl shadow-md transition-colors cursor-pointer"
                                 onClick={handleSave}
                             >
                                 Save Changes
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Password Reset Modal */}
+            {(pwdModalStep === "code" || pwdModalStep === "error" || pwdModalStep === "done") && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-6">
+                    <div className="bg-brand-bg rounded-2xl max-w-[400px] w-full p-7 md:p-8 shadow-2xl border border-brand-primary/10 scale-up">
+                        {pwdModalStep === "error" && (
+                            <div className="text-center">
+                                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-5">
+                                    <FiAlertCircle className="text-red-500" size={32} />
+                                </div>
+                                <h3 className="serif text-xl font-black text-brand-primary mb-2">Oops!</h3>
+                                <p className="text-sm text-brand-primary/80 mb-6">{pwdError}</p>
+                                <button
+                                    className="btn-primary w-full py-3.5 rounded-[11px] text-[15px]"
+                                    onClick={closePwdModal}
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        )}
+
+                        {pwdModalStep === "code" && (
+                            <>
+                                <h3 className="serif text-2xl font-black text-brand-primary mb-2">Enter reset code</h3>
+                                <p className="text-sm text-brand-primary/80 mb-6">
+                                    We sent a 6-digit code to <strong>{user.email}</strong>. Check your inbox and spam folder.
+                                </p>
+                                <form onSubmit={submitPasswordReset}>
+                                    <div className="mb-4">
+                                        <label className="text-xs font-semibold text-brand-primary/80 block mb-1.5">
+                                            6-Digit Code
+                                        </label>
+                                        <input
+                                            className="w-full bg-brand-bg border border-brand-primary/20 text-brand-primary font-mono text-center tracking-[0.3em] text-lg rounded-xl px-4 py-3 focus:outline-none focus:border-brand-secondary transition-colors"
+                                            type="text"
+                                            placeholder="000000"
+                                            maxLength={6}
+                                            value={pwdCode}
+                                            onChange={(e) => setPwdCode(e.target.value.replace(/\D/g, ""))}
+                                            autoFocus
+                                        />
+                                    </div>
+                                    <div className="mb-6">
+                                        <label className="text-xs font-semibold text-brand-primary/80 block mb-1.5">
+                                            New Password
+                                        </label>
+                                        <div className="relative">
+                                            <input
+                                                className="w-full bg-brand-bg border border-brand-primary/20 text-brand-primary font-medium rounded-xl px-4 py-3 pr-10 focus:outline-none focus:border-brand-secondary transition-colors text-sm"
+                                                type={pwdShowNewPassword ? "text" : "password"}
+                                                placeholder="••••••••"
+                                                value={pwdNewPassword}
+                                                onChange={(e) => setPwdNewPassword(e.target.value)}
+                                            />
+                                            <button
+                                                type="button"
+                                                className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-primary/50 hover:text-brand-primary transition-colors focus:outline-none cursor-pointer"
+                                                onClick={() => setPwdShowNewPassword(!pwdShowNewPassword)}
+                                            >
+                                                {pwdShowNewPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {pwdError && (
+                                        <p className="text-brand-accent text-[13px] mb-4 flex items-center gap-1.5 font-semibold">
+                                            <FiAlertCircle className="text-sm stroke-[2.5]" /> {pwdError}
+                                        </p>
+                                    )}
+                                    <div className="flex gap-3">
+                                        <button
+                                            type="button"
+                                            className="flex-1 py-3.5 rounded-xl text-sm font-bold text-brand-primary/60 bg-brand-primary/5 hover:bg-brand-primary/10 transition-colors cursor-pointer"
+                                            onClick={closePwdModal}
+                                            disabled={pwdLoading}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            className="flex-1 btn-primary py-3.5 rounded-xl text-[15px]"
+                                            disabled={pwdLoading}
+                                        >
+                                            {pwdLoading ? "Saving..." : "Update"}
+                                        </button>
+                                    </div>
+                                </form>
+                            </>
+                        )}
+
+                        {pwdModalStep === "done" && (
+                            <div className="text-center">
+                                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5">
+                                    <span className="text-green-600 text-3xl">✓</span>
+                                </div>
+                                <h3 className="serif text-xl font-black text-brand-primary mb-2">Password Updated!</h3>
+                                <p className="text-sm text-brand-primary/80 mb-6">Your password has been changed successfully.</p>
+                                <button
+                                    className="btn-primary w-full py-3.5 rounded-[11px] text-[15px]"
+                                    onClick={closePwdModal}
+                                >
+                                    Done
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

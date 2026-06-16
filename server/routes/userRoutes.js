@@ -4,7 +4,30 @@ const multer = require("multer");
 const auth = require("../middleware/auth");
 const userController = require("../controllers/userController");
 
-const upload = multer({ dest: "uploads/" });
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+const cloudinary = require("cloudinary").v2;
+
+// Configure Cloudinary
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// Configure Cloudinary Storage
+const storage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: "appitat_user_uploads",
+        allowed_formats: ["jpg", "jpeg", "png", "webp"],
+        public_id: (req, file) => {
+            const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+            return file.fieldname + "-" + uniqueSuffix;
+        },
+    },
+});
+
+const upload = multer({ storage: storage });
 
 router.get("/profile", auth, userController.getProfile);
 

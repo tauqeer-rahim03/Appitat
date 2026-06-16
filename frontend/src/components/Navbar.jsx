@@ -13,6 +13,7 @@ import {
     FiBookOpen,
 } from "react-icons/fi";
 import { FaUtensils } from "react-icons/fa6";
+import { resolvePic } from "../lib/utils";
 
 export default function Navbar() {
     const { user, navigate, logout, theme, toggleTheme } = useApp();
@@ -129,12 +130,12 @@ export default function Navbar() {
                                     <div className="w-[32px] h-[32px] rounded-full bg-brand-primary text-brand-bg flex items-center justify-center font-bold text-xs shadow-sm overflow-hidden shrink-0">
                                         {user.profilePic ? (
                                             <img
-                                                src={user.profilePic}
+                                                src={resolvePic(user.profilePic)}
                                                 alt="Profile"
                                                 className="w-full h-full object-cover"
                                             />
                                         ) : (
-                                            (user.name && user.name[0]) ? user.name[0].toUpperCase() : "U"
+                                            <FiUser className="text-[18px] opacity-80" />
                                         )}
                                     </div>
                                     <span className="text-sm font-bold text-brand-primary hidden lg:inline-block">

@@ -3,18 +3,19 @@
   <img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React 19"/>
   <img src="https://img.shields.io/badge/Express-5-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express 5"/>
   <img src="https://img.shields.io/badge/MongoDB-Atlas-47A248?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB"/>
+  <img src="https://img.shields.io/badge/Groq-AI-F55036?style=for-the-badge&logo=groq&logoColor=white" alt="Groq AI"/>
   <img src="https://img.shields.io/badge/Gemini-API-4285F4?style=for-the-badge&logo=google&logoColor=white" alt="Gemini API"/>
 </p>
 
 # 🍳 Appitat — AI Recipe Recommender
 
-**Appitat** is a full-stack, AI-powered recipe recommendation platform that transforms the ingredients in your kitchen into personalized, creative recipes. Powered by **Google Gemini**, it offers smart pantry tracking, deep dietary personalization, gamified cooking progress, and a stunning modern UI — all designed to make home cooking effortless and enjoyable.
+**Appitat** is a full-stack, AI-powered recipe recommendation platform that transforms the ingredients in your kitchen into personalized, creative recipes. Powered by **Groq AI** (`llama-3.3-70b-versatile`) for lightning-fast recipe generation and **Google Gemini** for vision-based ingredient detection, it offers smart pantry tracking, deep dietary personalization, gamified cooking progress, and a stunning modern UI — all designed to make home cooking effortless and enjoyable.
 
 > _"Tell us what's in your fridge — our AI finds the perfect recipe from your ingredients every single time."_
 
 <p align="center">
-  <a href="https://appitat.vercel.app" target="_blank">
-    <img src="https://img.shields.io/badge/🌐_Live_Demo-appitat.vercel.app-FF6B35?style=for-the-badge" alt="Live Demo"/>
+  <a href="https://appitat-frontend.onrender.com" target="_blank">
+    <img src="https://img.shields.io/badge/🌐_Live_Demo-appitat--frontend.onrender.com-FF6B35?style=for-the-badge" alt="Live Demo"/>
   </a>
 </p>
 
@@ -46,14 +47,22 @@
 
 ### 🤖 AI-Powered Recipe Generation
 
-- **Smart Recommendations** — Enter your available ingredients and preferences; Gemini AI generates 4 distinct, creative recipes with detailed step-by-step instructions.
-- **Vision-Based Ingredient Detection** — Upload a photo of your fridge or ingredients, and the AI identifies them and suggests matching recipes automatically.
-- **Deep Personalization** — Recipes adapt to your skill level (beginner → pro), allergy restrictions, disliked ingredients, cuisine preferences, meal type, spice level, and more.
+- **Streaming Smart Recommendations** — Enter your available ingredients and preferences; the Groq AI generates 4 distinct, creative recipes delivered one-at-a-time via **Server-Sent Events (SSE)** — each card appears instantly as it finishes, with no waiting for the full batch.
+- **Vision-Based Ingredient Detection** — Upload a photo of your fridge or ingredients, and the Gemini AI identifies them and suggests matching recipes automatically.
+- **Deep Personalization** — Recipes adapt to your skill level (beginner → pro), allergy restrictions, disliked ingredients, cuisine preferences, meal type, spice level, calorie targets, serving size, and more.
+- **Chef's Tip per Recipe** — Every AI-generated recipe now includes a practical, dish-specific chef's tip (technique, substitution, or timing trick).
+
+### 🔍 Advanced Filtering
+
+- **Calorie Range Slider** — A smooth dual-handle range slider (0–2000+ kcal) lets you set a precise minimum and maximum calorie target. This constraint is enforced as a hard requirement in the AI prompt.
+- **Servings Filter** — Select a target number of servings; the AI designs portion sizes accordingly.
+- **Meal Type, Cuisine, Diet, Time & Spice** — Comprehensive filter set covering all major preferences.
+- **Mobile Bottom Sheet** — On mobile, all filters open in an animated bottom-sheet panel with smooth enter/exit transitions and a swipe-to-dismiss handle. A badge on the filter button shows the count of active filters.
 
 ### 🏠 Smart Pantry Management
 
-- Maintain an ongoing pantry inventory that's automatically included when generating recipes.
-- Set strict allergy filters and a "Never Show Me" list to exclude unwanted ingredients globally.
+- Maintain an ongoing pantry inventory that's automatically merged with your entered ingredients when generating recipes.
+- Set strict allergy filters and a "Never Show Me" list to exclude unwanted ingredients globally across all AI requests.
 
 ### 🎮 Gamification & Progression
 
@@ -75,6 +84,7 @@
 
 - **Dark/Light Theme** — Toggle between themes with smooth transitions.
 - **Responsive Design** — Fully optimized for desktop, tablet, and mobile.
+- **Mobile Bottom Navigation** — Persistent bottom nav bar on mobile for fast access to Dashboard, Saved, and Account pages.
 - **Glassmorphism & Micro-Animations** — Modern design with slide-up animations, AI aura glows, marquee feature sections, and confetti celebrations.
 - **Lazy-Loaded Routes** — All pages use React lazy loading with a custom loading spinner for optimal performance.
 - **AI Quote Section** — Time-aware motivational cooking quotes on the dashboard.
@@ -85,6 +95,12 @@
 - Profile picture & cover image uploads with preview.
 - Tabbed account page (Cookbook, Preferences & AI, Badges, History).
 - Settings page with unsaved changes detection and discard modal.
+
+### 🔐 Security & Authentication
+
+- **Google OAuth Integration** — Seamless one-tap login and registration using Google accounts.
+- **Email Verification** — Mandatory 6-digit OTP verification via Nodemailer for all manual signups to ensure account security.
+- **Secure Password Reset** — Forgot password flow with time-limited 6-digit recovery codes.
 
 ---
 
@@ -105,44 +121,50 @@
 
 ### Backend
 
-| Technology                   | Purpose                                     |
-| ---------------------------- | ------------------------------------------- |
-| **Express 5**                | REST API server                             |
-| **MongoDB + Mongoose 9**     | NoSQL database & ODM                        |
-| **Google Generative AI SDK** | Gemini API integration                      |
-| **JSON Web Tokens (JWT)**    | Stateless authentication (7-day expiry)     |
-| **bcryptjs**                 | Password hashing with salt rounds           |
-| **Multer**                   | Multipart file uploads (images)             |
-| **CORS**                     | Cross-Origin Resource Sharing configuration |
-| **dotenv**                   | Environment variable management             |
+| Technology                   | Purpose                                          |
+| ---------------------------- | ------------------------------------------------ |
+| **Express 5**                | REST API server                                  |
+| **MongoDB + Mongoose 9**     | NoSQL database & ODM                             |
+| **Groq SDK**                 | Cloud AI recipe generation via SSE streaming     |
+| **Google Generative AI SDK** | Gemini API integration for vision features       |
+| **JSON Web Tokens (JWT)**    | Stateless authentication (7-day expiry)          |
+| **Google Auth Library**      | Secure Google sign-in integration                |
+| **Nodemailer**               | Email delivery for OTP and password resets       |
+| **bcryptjs**                 | Password hashing with salt rounds                |
+| **Multer**                   | Multipart file uploads (images)                  |
+| **CORS**                     | Cross-Origin Resource Sharing configuration      |
+| **dotenv**                   | Environment variable management                  |
 
 ### Deployment
 
-| Platform          | Service                            |
-| ----------------- | ---------------------------------- |
-| **Vercel**        | Frontend hosting with SPA rewrites |
-| **Render**        | Backend API hosting                |
-| **MongoDB Atlas** | Cloud database                     |
+| Platform          | Service                                      |
+| ----------------- | -------------------------------------------- |
+| **Render**        | Frontend Static Site & Backend Web Service   |
+| **MongoDB Atlas** | Cloud database                               |
 
 ---
 
 ## 📁 Project Structure
 
 ```
-Ai-recipe-recommender/
+Appitat/
 ├── frontend/                          # React + Vite frontend application
 │   ├── public/                        # Static assets & redirect rules
+│   │   └── _redirects                 # Render SPA rewrite rule
 │   ├── src/
 │   │   ├── components/                # Reusable UI components
 │   │   │   ├── dashboard/             # Dashboard-specific components
 │   │   │   │   ├── IngredientManager.jsx      # Ingredient input & management
-│   │   │   │   └── PreferencesSidebar.jsx     # Cuisine, diet, time filters
+│   │   │   │   └── PreferencesSidebar.jsx     # Filters: cuisine, diet, time, spice,
+│   │   │   │                                  # calories (range slider), servings,
+│   │   │   │                                  # meal type + mobile bottom sheet
 │   │   │   ├── AccountBadgesCard.jsx          # Badge display grid
 │   │   │   ├── AccountPantryCard.jsx          # Pantry management card
 │   │   │   ├── AccountPersonalizationCard.jsx # Allergy & preference editor
 │   │   │   ├── BackToTopButton.jsx            # Scroll-to-top button
 │   │   │   ├── FloatingPaths.jsx              # Background animation paths
 │   │   │   ├── Footer.jsx                     # Global footer
+│   │   │   ├── MobileBottomNav.jsx            # Bottom navigation bar (mobile)
 │   │   │   ├── Navbar.jsx                     # Navigation bar with auth state
 │   │   │   └── RecipeCard.jsx                 # Recipe card + skeleton loader
 │   │   ├── context/
@@ -177,7 +199,7 @@ Ai-recipe-recommender/
 │   │   ├── db.js                      # MongoDB connection setup
 │   │   └── gemini.js                  # Gemini AI model configuration
 │   ├── controllers/
-│   │   ├── aiController.js            # AI recommendation & vision logic
+│   │   ├── aiController.js            # AI recommendation, streaming & vision logic
 │   │   ├── authController.js          # Signup & login handlers
 │   │   └── userController.js          # Profile, pantry, XP, history handlers
 │   ├── middleware/
@@ -207,15 +229,16 @@ Ai-recipe-recommender/
 - **Node.js** v18+ ([Download](https://nodejs.org/))
 - **npm** v9+ (bundled with Node.js)
 - **MongoDB Atlas** account ([Create Free Cluster](https://www.mongodb.com/cloud/atlas))
-- **Google AI Studio** API key ([Get API Key](https://aistudio.google.com/apikey))
+- **Groq API** key ([Get API Key](https://console.groq.com/))
+- **Google AI Studio** API key for vision features ([Get API Key](https://aistudio.google.com/apikey))
 
 ### Installation
 
 1. **Clone the repository:**
 
     ```bash
-    git clone https://github.com/Niveditha-Sury/Ai-recipe-recommender.git
-    cd Ai-recipe-recommender
+    git clone https://github.com/tauqeer-rahim03/Appitat.git
+    cd Appitat
     ```
 
 2. **Install backend dependencies:**
@@ -239,13 +262,23 @@ Create a `.env` file in the `server/` directory:
 # MongoDB Connection String
 MONGO_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/<database>?retryWrites=true&w=majority
 
-# Google Gemini API Key
+# Google Gemini API Key (for vision ingredient detection)
 GOOGLE_API_KEY=your_google_ai_api_key
+
+# Groq API Key (for recipe generation)
+GROQ_API_KEY=your_groq_api_key
 
 # JWT Secret Key (use a strong random string)
 JWT_SECRET=your_super_secret_jwt_key
 
-# Frontend URL (for CORS)
+# Google OAuth Client ID
+GOOGLE_CLIENT_ID=your_google_client_id
+
+# Email Service (Nodemailer)
+EMAIL_USER=your_email@gmail.com
+EMAIL_APP_PASSWORD=your_app_password
+
+# Frontend URL (for CORS — set to your deployed frontend URL in production)
 FRONTEND_URL=http://localhost:5173
 
 # Server Port
@@ -265,7 +298,7 @@ VITE_API_URL=http://localhost:5000/api
 
 ```bash
 cd server
-node index.js
+npm start
 ```
 
 > Server runs on `http://localhost:5000`
@@ -287,10 +320,14 @@ All API endpoints are prefixed with `/api`. Protected routes require a `Bearer <
 
 ### Authentication Endpoints
 
-| Method | Endpoint           | Auth | Description                   |
-| ------ | ------------------ | ---- | ----------------------------- |
-| `POST` | `/api/auth/signup` | ❌   | Register a new user account   |
-| `POST` | `/api/auth/login`  | ❌   | Login and receive a JWT token |
+| Method | Endpoint                    | Auth | Description                            |
+| ------ | --------------------------- | ---- | -------------------------------------- |
+| `POST` | `/api/auth/signup`          | ❌   | Register a new user account            |
+| `POST` | `/api/auth/login`           | ❌   | Login and receive a JWT token          |
+| `POST` | `/api/auth/google`          | ❌   | Authenticate via Google OAuth token    |
+| `POST` | `/api/auth/verify-email`    | ❌   | Verify email using 6-digit OTP         |
+| `POST` | `/api/auth/forgot-password` | ❌   | Send password reset OTP                |
+| `POST` | `/api/auth/reset-password`  | ❌   | Reset password using OTP               |
 
 #### `POST /api/auth/signup`
 
@@ -336,14 +373,17 @@ All API endpoints are prefixed with `/api`. Protected routes require a `Bearer <
 
 ### AI Recipe Endpoints
 
-| Method | Endpoint                | Auth | Description                                        |
-| ------ | ----------------------- | ---- | -------------------------------------------------- |
-| `POST` | `/api/ai/recommend`     | ✅   | Generate AI recipes from ingredients & preferences |
-| `POST` | `/api/ai/vision-recipe` | ✅   | Identify ingredients from image & generate recipes |
-| `POST` | `/api/ai/save`          | ✅   | Save a recipe to the database                      |
-| `GET`  | `/api/ai/recipe/:id`    | ✅   | Fetch a specific recipe by ID                      |
+| Method | Endpoint                   | Auth | Description                                                |
+| ------ | -------------------------- | ---- | ---------------------------------------------------------- |
+| `POST` | `/api/ai/recommend`        | ✅   | Generate 4 AI recipes (batch, single response)             |
+| `POST` | `/api/ai/recommend-stream` | ✅   | Generate 4 AI recipes one-at-a-time via SSE streaming      |
+| `POST` | `/api/ai/vision-recipe`    | ✅   | Identify ingredients from image & generate recipes         |
+| `POST` | `/api/ai/save`             | ✅   | Save a recipe to the database                              |
+| `GET`  | `/api/ai/recipe/:id`       | ✅   | Fetch a specific recipe by ID                              |
 
-#### `POST /api/ai/recommend`
+#### `POST /api/ai/recommend-stream` _(Primary endpoint used by the frontend)_
+
+This endpoint uses **Server-Sent Events (SSE)**. The client receives events as each recipe is generated.
 
 ```json
 // Request Body
@@ -353,30 +393,21 @@ All API endpoints are prefixed with `/api`. Protected routes require a `Bearer <
   "cookingTime": "30 min",
   "dietaryType": "None",
   "spiceLevel": "Medium",
-  "mealType": "Dinner"
-}
-
-// Response (200)
-{
-  "message": "Smart recipes generated!",
-  "recipes": [
-    {
-      "title": "Garlic Butter Chicken Risotto",
-      "emoji": "🍗",
-      "description": "A creamy, rich Italian risotto...",
-      "cuisine": "Italian",
-      "ingredients": ["500g chicken breast", "2 cups arborio rice", ...],
-      "steps": ["Season the chicken...", "Heat olive oil...", ...],
-      "time": "35 min",
-      "calories": 520,
-      "difficulty": "Medium",
-      "servings": 4,
-      "accent": "#E67E22",
-      "tags": ["Comfort Food", "Italian", "One Pot"]
-    }
-  ]
+  "mealType": "Dinner",
+  "calories": "400-600",
+  "servings": "4"
 }
 ```
+
+**SSE Event Types:**
+
+| Event    | Payload                                      | Description                        |
+| -------- | -------------------------------------------- | ---------------------------------- |
+| `recipe` | `{ recipe: {...}, index: 0..3 }`             | One complete recipe object         |
+| `error`  | `{ index: N, message: "..." }`               | A single recipe failed to generate |
+| `done`   | `{ total: 4 }`                               | All recipes have been streamed     |
+
+**Recipe object fields:** `title`, `emoji`, `description`, `tip`, `cuisine`, `ingredients`, `steps`, `time`, `calories`, `difficulty`, `servings`, `accent`, `tags`
 
 #### `POST /api/ai/vision-recipe`
 
@@ -429,21 +460,22 @@ Whitelisted fields: `name`, `email`, `age`, `experience`, `allergies`, `pantry`,
 
 ## 🧠 AI Integration
 
-Appitat uses the **Google Gemini API** (model: `gemini-3.1-flash-lite-preview`) for all AI features:
+Appitat uses a **hybrid AI architecture** combining **Groq** (`llama-3.3-70b-versatile`) for recipe generation and the **Google Gemini API** (`gemini-2.0-flash-lite`) for vision features:
 
-### Recipe Generation Pipeline
+### Streaming Recipe Generation Pipeline (Groq)
 
-1. **Input Aggregation** — Merges user-provided ingredients with their saved pantry items.
-2. **Exclusion Filtering** — Combines the user's allergy list and "Never Show Me" list to build exclusion rules.
-3. **Prompt Engineering** — Constructs a detailed prompt including cuisine, meal type, cooking time, diet, spice level, and skill level.
-4. **Structured Output** — Requests JSON-formatted responses with `responseMimeType: "application/json"` for reliable parsing.
-5. **Robust Parsing** — Uses brace-counting JSON extraction to handle trailing conversational text from the model.
+1. **Input Aggregation** — Merges user-provided ingredients with their saved pantry items (deduped).
+2. **Exclusion Filtering** — Combines the user's allergy list and "Never Show Me" list into hard exclusion rules.
+3. **Prompt Engineering** — Constructs a detailed prompt per recipe, including cuisine, meal type, cooking time, diet, spice level, skill level, calorie range (hard constraint), and serving size.
+4. **SSE Streaming** — Generates recipes sequentially (4 independent API calls), sending each finished recipe as an SSE `recipe` event so the UI can render progressively.
+5. **Deduplication** — Tracks generated titles across the session; each new prompt instructs the model to avoid already-generated recipes.
+6. **Structured Output** — Uses `response_format: { type: "json_object" }` for reliable JSON parsing with no markdown contamination.
 
-### Vision Recognition Pipeline
+### Vision Recognition Pipeline (Gemini)
 
 1. **Image Ingestion** — Accepts either a file upload (via Multer) or a URL reference.
 2. **Base64 Encoding** — Converts the image to base64 for the Gemini multimodal API.
-3. **Ingredient Identification** — The AI analyzes the image and returns identified ingredients.
+3. **Ingredient Identification** — The Gemini AI analyzes the image and returns identified ingredients.
 4. **Recipe Generation** — Generates 3 recipes based on the identified ingredients.
 5. **Auto-Save** — The primary recipe is automatically saved to the database.
 
@@ -504,23 +536,29 @@ Appitat uses the **Google Gemini API** (model: `gemini-3.1-flash-lite-preview`) 
 
 ```javascript
 {
-  name:           String (required),
-  email:          String (required, unique),
-  password:       String (required, hashed),
-  profilePic:     String,
-  coverPic:       String,
-  pantry:         [String],
-  allergies:      [String],
-  neverShowMe:    [String],
-  age:            Number,
-  experience:     String (enum: "beginner" | "intermediate" | "advanced" | "pro"),
-  xp:             Number (default: 0),
-  level:          Number (default: 1),
-  cookDays:       Number (default: 0),
-  recentlyViewed: [{ recipeId, viewedAt }],
-  history:        [{ recipeId, title, emoji, cuisine, xpAwarded, cookedAt }],
-  badges:         [{ name, emoji, unlockedAt }],
-  savedRecipes:   [Object]
+  name:                   String (required),
+  email:                  String (required, unique),
+  password:               String (hashed),
+  googleId:               String,
+  isVerified:             Boolean (default: false),
+  verificationCode:       String,
+  verificationCodeExpiry: Date,
+  resetCode:              String,
+  resetCodeExpiry:        Date,
+  profilePic:             String,
+  coverPic:               String,
+  pantry:                 [String],
+  allergies:              [String],
+  neverShowMe:            [String],
+  age:                    Number,
+  experience:             String (enum: "beginner" | "intermediate" | "advanced" | "pro"),
+  xp:                     Number (default: 0),
+  level:                  Number (default: 1),
+  cookDays:               Number (default: 0),
+  recentlyViewed:         [{ recipeId, viewedAt }],
+  history:                [{ recipeId, title, emoji, cuisine, xpAwarded, cookedAt }],
+  badges:                 [{ name, emoji, unlockedAt }],
+  savedRecipes:           [Object]
 }
 ```
 
@@ -552,37 +590,39 @@ Appitat uses the **Google Gemini API** (model: `gemini-3.1-flash-lite-preview`) 
 
 ## 🚀 Deployment
 
-### Frontend (Vercel)
+Both the frontend and backend are hosted on **Render**.
 
-1. Import the repository on [Vercel](https://vercel.com).
-2. Set the **Root Directory** to `frontend`.
-3. Set the **Build Command** to `npm run build`.
-4. Set the **Output Directory** to `dist`.
-5. Add the environment variable:
-    ```
-    VITE_API_URL=https://your-backend.onrender.com/api
-    ```
-6. Ensure a `vercel.json` exists for SPA rewrites:
-    ```json
-    {
-        "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
-    }
-    ```
-
-### Backend (Render)
+### Backend (Render Web Service)
 
 1. Create a new **Web Service** on [Render](https://render.com).
 2. Set the **Root Directory** to `server`.
 3. Set the **Build Command** to `npm install`.
-4. Set the **Start Command** to `node index.js`.
+4. Set the **Start Command** to `npm start`.
 5. Add all environment variables from the [Environment Variables](#environment-variables) section.
-6. Update `FRONTEND_URL` to your Vercel deployment URL.
+6. Set `FRONTEND_URL` to your Render frontend URL (e.g. `https://appitat-frontend.onrender.com`).
+
+### Frontend (Render Static Site)
+
+1. Create a new **Static Site** on [Render](https://render.com).
+2. Set the **Root Directory** to `frontend`.
+3. Set the **Build Command** to `npm install && npm run build`.
+4. Set the **Publish Directory** to `dist`.
+5. Add the environment variable:
+    ```
+    VITE_API_URL=https://appitat-backend.onrender.com/api
+    ```
+6. The `public/_redirects` file handles SPA routing automatically:
+    ```
+    /*  /index.html  200
+    ```
 
 ### Database (MongoDB Atlas)
 
 1. Create a free cluster on [MongoDB Atlas](https://www.mongodb.com/cloud/atlas).
 2. Whitelist `0.0.0.0/0` for connections from Render.
-3. Copy the connection string and set it as `MONGO_URI` in the backend `.env`.
+3. Copy the connection string and set it as `MONGO_URI` in the backend environment variables.
+
+> **Note on free tier:** Render's free Web Services spin down after 15 minutes of inactivity. The frontend sends a wake-up ping to the backend on first load to minimise cold-start delays.
 
 ---
 
@@ -645,5 +685,5 @@ This project was collaboratively built by:
 ---
 
 <p align="center">
-  Built with ❤️ and AI by <strong>Tauqeer Rahim</strong> & <strong>Niveditha Sury</strong>
+  Built with ❤️ and AI by <strong>Tauqeer Rahim</strong> &amp; <strong>Niveditha Sury</strong>
 </p>

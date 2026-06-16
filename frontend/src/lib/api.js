@@ -1,7 +1,15 @@
 import axios from "axios";
 
+const getBaseUrl = () => {
+    if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+    if (typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+        return "https://appitat-backend.onrender.com/api";
+    }
+    return "http://localhost:5000/api";
+};
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api",
+  baseURL: getBaseUrl(),
   headers: {
     "Content-Type": "application/json",
   },
@@ -23,10 +31,27 @@ api.interceptors.request.use(
 export const authAPI = {
     signup: (data) => api.post("/auth/signup", data),
     login: (data) => api.post("/auth/login", data),
+    googleLogin: (data) => api.post("/auth/google", data),
+    forgotPassword: (data) => api.post("/auth/forgot-password", data),
+    resetPassword: (data) => api.post("/auth/reset-password", data),
+    verifyEmail: (data) => api.post("/auth/verify-email", data),
 };
 
 export const aiAPI = {
     getRecommendations: (data) => api.post("/ai/recommend", data),
+    getRecommendationStream: (data) => {
+        const token = localStorage.getItem("appitat_token");
+        const baseURL = getBaseUrl();
+        return fetch(`${baseURL}/ai/recommend-stream`, {
+            method: "POST",
+            credentials: "include",
+            headers: {
+                "Content-Type": "application/json",
+                ...(token && { Authorization: `Bearer ${token}` }),
+            },
+            body: JSON.stringify(data),
+        });
+    },
     visionRecommend: (formData) =>
         api.post("/ai/vision-recipe", formData, {
             headers: {
@@ -50,6 +75,10 @@ export const userAPI = {
             },
         }),
     syncSavedRecipes: (savedRecipes) => api.post("/user/sync-saved", { savedRecipes }),
+};
+
+export const feedbackAPI = {
+    submit: (data) => api.post("/feedback", data),
 };
 
 export default api;

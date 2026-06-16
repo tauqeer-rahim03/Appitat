@@ -7,14 +7,18 @@ const userRoutes = require("./routes/userRoutes");
 
 connectDB();
 
+const allowedOrigins = [
+    process.env.FRONTEND_URL,
+    "https://appitat-frontend.onrender.com",
+    "http://localhost:5173",
+    "http://localhost:5174",
+].filter(Boolean);
+
 app.use(
     cors({
-        origin: [
-            process.env.FRONTEND_URL,       
-            "https://appitat.vercel.app",
-            "http://localhost:5173",
-            "http://localhost:5174",
-        ].filter(Boolean),
+        origin: allowedOrigins,
+        allowedHeaders: ["Content-Type", "Authorization"],
+        credentials: true,
     }),
 );
 app.use(express.json({ limit: "10mb" }));
@@ -24,9 +28,12 @@ app.use("/uploads", express.static("uploads"));
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/ai", require("./routes/aiRoutes"));
 app.use("/api/user", userRoutes);
+app.use("/api/feedback", require("./routes/feedbackRoutes"));
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
 
 app.get("/", (req, res) => {
     res.send("Welcome to the AI Recipe Recommender API");

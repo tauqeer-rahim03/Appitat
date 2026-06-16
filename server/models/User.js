@@ -3,8 +3,11 @@ const mongoose = require("mongoose");
 const userSchema = new mongoose.Schema({
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
-
+    password: { 
+        type: String, 
+        required: function() { return !this.googleId; } 
+    },
+    googleId: { type: String, sparse: true },
     // Personalization & Imagery
     profilePic: { type: String, default: "" },
     coverPic: { type: String, default: "" },
@@ -47,6 +50,14 @@ const userSchema = new mongoose.Schema({
     ],
     savedRecipes: [Object],
 
+    // Password Reset
+    resetCode: { type: String },
+    resetCodeExpiry: { type: Date },
+
+    // Signup Verification
+    isVerified: { type: Boolean, default: false },
+    verificationCode: { type: String },
+    verificationCodeExpiry: { type: Date },
 });
 
 module.exports = mongoose.model("User", userSchema);

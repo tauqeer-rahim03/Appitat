@@ -21,32 +21,32 @@ export default function HeroPage() {
             {
                 icon: <RefreshCcw size={40} />,
                 title: "Smart Pantry Tracking",
-                desc: "Keep an ongoing inventory. We'll only suggest recipes you can actually make.",
+                desc: "Log ingredients and get recipes you can make.",
             },
             {
                 icon: <UserCheck size={40} />,
                 title: "Deep Personalization",
-                desc: "Set strict allergy filters or log ingredients you dislike for tailored menus.",
+                desc: "Set allergy filters and log dislikes easily.",
             },
             {
                 icon: <Award size={40} />,
                 title: "Gamified Cooking",
-                desc: "Earn XP and level up from Novice to Master Chef as you cook and explore.",
+                desc: "Earn XP and level up as you cook and explore.",
             },
             {
                 icon: <BookHeart size={40} />,
-                title: "Your Digital Cookbook",
-                desc: "Save your favorite discoveries and plan your entire week's meals effortlessly.",
+                title: "Digital Cookbook",
+                desc: "Save recipes and plan your meals effortlessly.",
             },
             {
                 icon: <Sparkles size={40} />,
                 title: "AI Recipe Generation",
-                desc: "Our AI models create thousands of unique, delicious recipes on demand.",
+                desc: "Let AI create unique, tasty recipes on demand.",
             },
             {
                 icon: <Clock size={40} />,
                 title: "Instant Inspiration",
-                desc: "Short on time? Get a personalized dinner plan mapped out in seconds.",
+                desc: "Get a custom dinner plan mapped out instantly.",
             },
         ],
         [],
@@ -134,7 +134,7 @@ export default function HeroPage() {
                     <div className="w-full md:w-[50%] slide-up stagger-2 relative flex flex-col gap-4 mt-16 md:mt-0 items-center md:items-end px-4 md:px-0">
                         {RECIPES.slice(0, 3).map((r, i) => (
                             <div
-                                key={r.id}
+                                key={r.id ? `${r.id}-${i}` : `hero-recipe-${i}`}
                                 className="glass-card p-3 md:p-4 flex items-center gap-3 md:gap-4 w-full max-w-[420px] hover:-translate-y-1 transition-transform active:scale-[0.98]"
                                 style={{
                                     opacity: 0,
@@ -204,7 +204,7 @@ export default function HeroPage() {
 
                     {/* Scrolling Track (moving left-to-right) */}
                     <motion.div
-                        className="flex gap-8 px-4 items-center w-max"
+                        className="flex gap-4 md:gap-8 px-4 items-center w-max"
                         animate={{ x: ["0%", "-50%"] }}
                         transition={{
                             repeat: Infinity,
@@ -216,7 +216,7 @@ export default function HeroPage() {
                         {[...features, ...features, ...features].map((f, i) => (
                             <div
                                 key={i}
-                                className="bg-brand-bg border border-brand-primary/5 shadow-sm rounded-card p-8 w-[350px] shrink-0 whitespace-normal text-center"
+                                className="bg-brand-bg border border-brand-primary/5 shadow-sm rounded-card p-6 md:p-8 w-[280px] md:w-[350px] shrink-0 whitespace-normal text-center"
                             >
                                 <div className="text-brand-secondary flex justify-center mb-6">
                                     <div className="bg-brand-secondary/10 p-4 rounded-full">

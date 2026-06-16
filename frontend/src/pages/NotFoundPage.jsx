@@ -1,6 +1,11 @@
 import { useApp } from "../context/AppContext";
 
-export default function NotFoundPage() {
+export default function NotFoundPage({ 
+    title = "Oops! The recipe burned.", 
+    message = "We can't seem to find the page you're looking for. It might have been devoured, moved, or perhaps someone forgot to set the kitchen timer!",
+    code = "404",
+    subtext = "Error Code: 404 (Missing Ingredient)"
+}) {
     const { navigate } = useApp();
 
     return (
@@ -13,29 +18,33 @@ export default function NotFoundPage() {
                 </div>
 
                 <h1 className="serif text-[clamp(60px,10vw,100px)] font-black text-[#1e0f00] leading-none mb-1 tracking-tight">
-                    404
+                    {code}
                 </h1>
 
                 <h2 className="serif text-[clamp(28px,4vw,36px)] font-bold text-[#C97D2E] mb-6">
-                    Oops! The recipe burned.
+                    {title}
                 </h2>
 
                 <p className="text-[#6b5240] text-lg leading-relaxed mb-10">
-                    We can't seem to find the page you're looking for. It might
-                    have been devoured, moved, or perhaps someone forgot to set
-                    the kitchen timer!
+                    {message}
                 </p>
 
                 <button
                     className="btn-primary px-8 py-3.5 rounded-[12px] text-[15px] shadow-md shadow-[#C97D2E]/20"
-                    onClick={() => navigate("hero")}
+                    onClick={() => {
+                        if (code === "500") {
+                            window.location.href = "/";
+                        } else {
+                            navigate("hero");
+                        }
+                    }}
                 >
-                    Back to the Kitchen →
+                    {code === "500" ? "Reset Kitchen →" : "Back to the Kitchen →"}
                 </button>
             </div>
 
             <div className="absolute bottom-10 text-[13px] text-[#8a6642]">
-                Error Code: 404 (Missing Ingredient)
+                {subtext}
             </div>
         </div>
     );

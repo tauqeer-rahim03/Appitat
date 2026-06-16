@@ -29,36 +29,36 @@ const RecipeCardOuter = ({ r, index, isSaved, toggleSave, navigate }) => {
                                 color: accent,
                             }}
                         >
-                            {r.emoji}
+                            {typeof r.emoji === 'string' ? r.emoji : "🍽️"}
                         </div>
                         <div>
                             <p className="font-bold text-brand-primary text-[15px] leading-tight">
-                                {r.title}
+                                {typeof r.title === 'string' ? r.title : String(r.title ?? '')}
                             </p>
                             <p className="text-[13px] text-brand-primary/80 mt-1 uppercase tracking-wider">
-                                {r.cuisine}
+                                {typeof r.cuisine === 'string' ? r.cuisine : ''}
                             </p>
                         </div>
                     </div>
                 </div>
-                <p className="text-[14px] text-brand-primary/80 leading-relaxed mb-4 flex-1">
-                    {(r.description || "").slice(0, 100)}…
+                <p className="text-[13px] text-brand-primary/70 leading-relaxed mb-4 flex-1 line-clamp-2">
+                    {typeof r.description === 'string' ? r.description : ''}
                 </p>
                 <div className="flex flex-wrap gap-1.5 mb-4">
-                    {(r.tags || []).map((t) => (
-                        <span key={t} className="tag pointer-events-none">
-                            {t}
+                    {Array.isArray(r.tags) && r.tags.map((t, ti) => (
+                        <span key={typeof t === 'string' ? t : ti} className="tag pointer-events-none">
+                            {typeof t === 'string' ? t : String(t ?? '')}
                         </span>
                     ))}
                 </div>
                 <div className="flex items-center justify-between border-t border-brand-primary/10 pt-3.5 mt-auto">
                     <div className="flex gap-3.5 text-sm font-medium text-brand-primary/80">
                         <span className="flex items-center gap-1.5">
-                            <FiClock className="relative -top-[1px]" /> {r.time}
+                            <FiClock className="relative -top-[1px]" /> {typeof r.time === 'string' ? r.time : String(r.time ?? '')}
                         </span>
                         <span className="flex items-center gap-1.5">
                             <FaFire className="relative -top-[1px] text-brand-secondary" />{" "}
-                            {r.calories} kcal
+                            {typeof r.calories === 'string' ? r.calories : String(r.calories ?? '')} kcal
                         </span>
                     </div>
                     <button

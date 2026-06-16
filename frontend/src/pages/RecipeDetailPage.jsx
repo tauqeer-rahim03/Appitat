@@ -113,6 +113,11 @@ export default function RecipeDetailPage({ recipe }) {
                                             {recipe.difficulty}
                                         </span>
                                     </div>
+                                    {recipe.description && (
+                                        <p className="text-[14px] text-brand-primary/70 leading-relaxed mt-3 max-w-[520px]">
+                                            {recipe.description}
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                             {/* Desktop action buttons */}
@@ -216,9 +221,9 @@ export default function RecipeDetailPage({ recipe }) {
                         >
                             <p className="text-[13px] text-brand-primary/80 leading-relaxed">
                                 <strong className="text-brand-primary">
-                                    Chef's note:{" "}
+                                    Chef's tip:{" "}
                                 </strong>
-                                {recipe.description}
+                                {recipe.tip || recipe.description || "Enjoy your meal!"}
                             </p>
                         </div>
                     </div>

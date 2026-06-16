@@ -1,4 +1,4 @@
-import { useState, useEffect, Suspense, lazy } from "react";
+import { useState, useEffect, useRef, Suspense, lazy } from "react";
 import {
     Routes,
     Route,
@@ -10,6 +10,7 @@ import { AppContext } from "./context/AppContext";
 import Navbar from "./components/Navbar";
 import BackToTopButton from "./components/BackToTopButton";
 import MobileBottomNav from "./components/MobileBottomNav";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 const HeroPage = lazy(() => import("./pages/HeroPage"));
 const AuthPage = lazy(() => import("./pages/AuthPage"));
@@ -22,7 +23,8 @@ const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 import { calculateUserBadges } from "./data/badges";
 import { RECIPES } from "./data/constants";
 import { FiCheckCircle, FiX } from "react-icons/fi";
-import { userAPI } from "./lib/api";
+import { userAPI, aiAPI } from "./lib/api";
+import { sanitizeUser } from "./lib/utils";
 
 import useLocalStorage from "./hooks/useLocalStorage";
 import useTheme from "./hooks/useTheme";
@@ -32,7 +34,10 @@ export default function App() {
     const location = useLocation();
     const { theme, toggleTheme } = useTheme();
 
-    const [currentRecipe, setCurrentRecipe] = useLocalStorage("appitat_current_recipe", null);
+    const [currentRecipe, setCurrentRecipe] = useLocalStorage(
+        "appitat_current_recipe",
+        null,
+    );
     const [user, setUser] = useLocalStorage("appitat_user", null);
     const [saved, setSaved] = useLocalStorage("appitat_saved", []);
     const [achievedBadge, setAchievedBadge] = useState(null);
@@ -44,9 +49,119 @@ export default function App() {
     const [dashSelectedDiets, setDashSelectedDiets] = useState([]);
     const [dashSelectedTime, setDashSelectedTime] = useState("");
     const [dashSelectedSpice, setDashSelectedSpice] = useState("");
-    const [dashSelectedCalories, setDashSelectedCalories] = useState("");
+    const [dashSelectedCalories, setDashSelectedCalories] = useState([0, 2000]);
     const [dashSelectedServings, setDashSelectedServings] = useState("");
     const [dashSelectedMealType, setDashSelectedMealType] = useState("");
+    const [dashLoading, setDashLoading] = useState(false);
+    const [dashStream, setDashStream] = useState("");
+    const [dashStreamingCount, setDashStreamingCount] = useState(0);
+    // Generation counter — incremented on each new search to cancel stale SSE readers
+    const dashGenRef = useRef(0);
+
+    const generateRecipes = async () => {
+        // Cancel any in-progress SSE reader from a previous call
+        const gen = ++dashGenRef.current;
+
+        setDashLoading(true);
+        setDashStream("");
+        setDashAiIntro("");
+        setDashResults([]);
+        setDashStreamingCount(0);
+
+        try {
+            const response = await aiAPI.getRecommendationStream({
+                ingredients: dashIngredients.map((i) => i.name),
+                cuisine: dashSelectedCuisines[0],
+                cookingTime: dashSelectedTime,
+                dietaryType: dashSelectedDiets[0],
+                spiceLevel: dashSelectedSpice,
+                mealType: dashSelectedMealType,
+                calories: (dashSelectedCalories[0] > 0 || dashSelectedCalories[1] < 2000)
+                    ? `${dashSelectedCalories[0]}kcal - ${dashSelectedCalories[1] >= 2000 ? "2000+kcal" : `${dashSelectedCalories[1]}kcal`}`
+                    : null,
+                servings: dashSelectedServings,
+            });
+
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.message || `Server error ${response.status}`);
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = "";
+
+            const processChunk = (chunk) => {
+                // Discard updates from a stale search
+                if (dashGenRef.current !== gen) return;
+
+                buffer += chunk;
+                const parts = buffer.split("\n\n");
+                buffer = parts.pop();
+
+                for (const part of parts) {
+                    const lines = part.split("\n");
+                    let eventType = "message";
+                    let dataStr = "";
+
+                    for (const line of lines) {
+                        if (line.startsWith("event: ")) eventType = line.slice(7).trim();
+                        else if (line.startsWith("data: ")) dataStr = line.slice(6).trim();
+                    }
+
+                    if (!dataStr) continue;
+
+                    try {
+                        const payload = JSON.parse(dataStr);
+
+                        if (eventType === "recipe") {
+                            const idx = Number(payload.index);
+                            const newRecipe = {
+                                ...payload.recipe,
+                                // id comes LAST so it always overrides payload.recipe.id
+                                id: `ai-${gen}-${idx}`,
+                            };
+                            setDashResults((prev) => {
+                                const next = [...prev];
+                                next[idx] = newRecipe;
+                                return next;
+                            });
+                            setDashStreamingCount((c) => c + 1);
+                            setDashStream(`Crafting recipe ${idx + 1} of 6... ✓`);
+                        } else if (eventType === "error") {
+                            console.warn(`[SSE] Recipe slot ${payload.index} failed:`, payload.message);
+                            setDashStreamingCount((c) => c + 1);
+                        } else if (eventType === "done") {
+                            setDashStream("Here are your freshly crafted recipes!");
+                            setDashAiIntro("Here are your freshly crafted recipes!");
+                            setDashLoading(false);
+                            addXp(50);
+                            handleCookDay();
+                        }
+                    } catch (e) {
+                        // ignore malformed SSE chunks
+                    }
+                }
+            };
+
+            while (true) {
+                if (dashGenRef.current !== gen) break; // abort stale reader
+                const { done, value } = await reader.read();
+                if (done) break;
+                processChunk(decoder.decode(value, { stream: true }));
+            }
+        } catch (err) {
+            if (dashGenRef.current !== gen) return; // ignore errors from stale searches
+            console.error("AI Recommendation Error:", err);
+            setDashStream(
+                "I'm sorry, I'm having trouble connecting to my creative kitchen: " +
+                    (err.message || "Unknown error"),
+            );
+            setDashAiIntro("Connection issue.");
+            setDashResults([]);
+            setDashLoading(false);
+        }
+    };
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -54,7 +169,7 @@ export default function App() {
             if (token) {
                 try {
                     const response = await userAPI.getProfile();
-                    setUser(response.data);
+                    setUser(sanitizeUser(response.data));
                     if (response.data.savedRecipes) {
                         setSaved(response.data.savedRecipes);
                     }
@@ -70,11 +185,10 @@ export default function App() {
 
     // Wake up the Render server on first load (free tier spins down after inactivity)
     useEffect(() => {
-        fetch('https://appitat.onrender.com')
+        fetch("https://appitat-backend.onrender.com")
             .then(() => console.log("Server wake-up signal sent"))
             .catch((err) => console.error("Wake-up failed", err));
     }, []);
-
 
     const handleNavigate = (path, data) => {
         if (data) setCurrentRecipe(data);
@@ -87,11 +201,11 @@ export default function App() {
     };
 
     const login = async (u, token) => {
-        setUser(u);
+        setUser(sanitizeUser(u));
         if (token) {
             try {
                 const response = await userAPI.getProfile();
-                setUser(response.data);
+                setUser(sanitizeUser(response.data));
             } catch (err) {
                 console.error("Failed to fetch full profile after login", err);
             }
@@ -116,8 +230,7 @@ export default function App() {
         localStorage.removeItem("appitat_token");
         setUser(null);
         setSaved([]);
-        navigate("/");
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        window.location.href = "/";
     };
 
     const toggleSave = async (r) => {
@@ -125,12 +238,14 @@ export default function App() {
             const newList = p.find((x) => x.id === r.id)
                 ? p.filter((x) => x.id !== r.id)
                 : [...p, r];
-            
+
             // Sync to backend if logged in
             if (user) {
-                userAPI.syncSavedRecipes(newList).catch(err => 
-                    console.error("Failed to sync saved recipes:", err)
-                );
+                userAPI
+                    .syncSavedRecipes(newList)
+                    .catch((err) =>
+                        console.error("Failed to sync saved recipes:", err),
+                    );
             }
             return newList;
         });
@@ -161,7 +276,7 @@ export default function App() {
 
     const addXp = async (amount, recipeMetadata = null) => {
         if (!user) return;
-        
+
         const currentXp = user.xp || 0;
         const newXp = currentXp + amount;
         const newLevel = Math.floor(newXp / 500) + 1;
@@ -169,7 +284,7 @@ export default function App() {
         const updatedUser = {
             ...user,
             xp: newXp,
-            level: newLevel
+            level: newLevel,
         };
 
         setUser(updatedUser);
@@ -177,18 +292,21 @@ export default function App() {
 
         try {
             const res = await userAPI.addXp(amount);
-            
+
             if (recipeMetadata) {
                 try {
                     const recordRes = await userAPI.recordCook({
                         recipeId: recipeMetadata.id,
                         title: recipeMetadata.title,
-                        emoji: typeof recipeMetadata.emoji === 'string' ? recipeMetadata.emoji : "🍳",
+                        emoji:
+                            typeof recipeMetadata.emoji === "string"
+                                ? recipeMetadata.emoji
+                                : "🍳",
                         cuisine: recipeMetadata.cuisine,
-                        xpAwarded: amount
+                        xpAwarded: amount,
                     });
                     if (recordRes.data?.user) {
-                        setUser(recordRes.data.user);
+                        setUser(sanitizeUser(recordRes.data.user));
                         return; // Done
                     }
                 } catch (recordErr) {
@@ -198,12 +316,17 @@ export default function App() {
 
             // Fallback: Update local state with the authoritative values from the DB if recordCook didn't
             if (res.data?.user) {
-                setUser(res.data.user);
+                setUser(sanitizeUser(res.data.user));
             }
         } catch (err) {
-            console.error("Failed to sync progress to backend:", err.response?.data || err.message);
+            console.error(
+                "Failed to sync progress to backend:",
+                err.response?.data || err.message,
+            );
             if (err.response?.status === 401) {
-                alert("Your session has expired. Please log in again to save your progress.");
+                alert(
+                    "Your session has expired. Please log in again to save your progress.",
+                );
                 logout();
             }
         }
@@ -211,13 +334,13 @@ export default function App() {
 
     const handleCookDay = async () => {
         if (!user) return;
-        
+
         const newCookDays = (user.cookDays || 0) + 1;
         const updatedLocal = {
             ...user,
-            cookDays: newCookDays
+            cookDays: newCookDays,
         };
-        
+
         setUser(updatedLocal);
         checkBadgeUnlocks(user, updatedLocal);
 
@@ -226,6 +349,17 @@ export default function App() {
         } catch (err) {
             console.error("Failed to sync cook days to backend:", err);
         }
+    };
+
+    const syncUserXpAndLevel = (xp, level) => {
+        if (!user) return;
+        const updatedUser = {
+            ...user,
+            xp: Number(xp),
+            level: Number(level),
+        };
+        setUser(updatedUser);
+        checkBadgeUnlocks(user, updatedUser);
     };
 
     const showNav =
@@ -239,6 +373,7 @@ export default function App() {
                 logout,
                 updateUser,
                 addXp,
+                syncUserXpAndLevel,
                 handleCookDay,
                 saved,
                 toggleSave,
@@ -271,6 +406,12 @@ export default function App() {
                 setSelectedServings: setDashSelectedServings,
                 selectedMealType: dashSelectedMealType,
                 setSelectedMealType: setDashSelectedMealType,
+                loading: dashLoading,
+                setLoading: setDashLoading,
+                stream: dashStream,
+                setStream: setDashStream,
+                streamingCount: dashStreamingCount,
+                generateRecipes,
             }}
         >
             {achievedBadge && (
@@ -313,40 +454,42 @@ export default function App() {
 
             {showNav && <Navbar />}
             {showNav && <MobileBottomNav />}
-            <Suspense
-                fallback={
-                    <div className="min-h-screen bg-brand-bg flex items-center justify-center">
-                        <div className="w-12 h-12 border-4 border-brand-primary/20 border-t-brand-secondary rounded-full animate-spin"></div>
-                    </div>
-                }
-            >
-                <Routes>
-                    <Route
-                        path="/"
-                        element={
-                            user ? (
-                                <Navigate to="/dashboard" replace />
-                            ) : (
-                                <HeroPage />
-                            )
-                        }
-                    />
-                    <Route path="/login" element={<AuthPage mode="login" />} />
-                    <Route
-                        path="/signup"
-                        element={<AuthPage mode="signup" />}
-                    />
-                    <Route path="/dashboard" element={<DashboardPage />} />
-                    <Route
-                        path="/recipe"
-                        element={<RecipeDetailPage recipe={currentRecipe} />}
-                    />
-                    <Route path="/saved" element={<SavedPage />} />
-                    <Route path="/account" element={<AccountPage />} />
-                    <Route path="/settings" element={<SettingsPage />} />
-                    <Route path="*" element={<NotFoundPage />} />
-                </Routes>
-            </Suspense>
+            <ErrorBoundary>
+                <Suspense
+                    fallback={
+                        <div className="min-h-screen bg-brand-bg flex items-center justify-center">
+                            <div className="w-12 h-12 border-4 border-brand-primary/20 border-t-brand-secondary rounded-full animate-spin"></div>
+                        </div>
+                    }
+                >
+                    <Routes>
+                        <Route
+                            path="/"
+                            element={
+                                user ? (
+                                    <Navigate to="/dashboard" replace />
+                                ) : (
+                                    <HeroPage />
+                                )
+                            }
+                        />
+                        <Route path="/login" element={<AuthPage mode="login" />} />
+                        <Route
+                            path="/signup"
+                            element={<AuthPage mode="signup" />}
+                        />
+                        <Route path="/dashboard" element={user ? <DashboardPage /> : <Navigate to="/login" replace />} />
+                        <Route
+                            path="/recipe"
+                            element={user ? <RecipeDetailPage recipe={currentRecipe} /> : <Navigate to="/login" replace />}
+                        />
+                        <Route path="/saved" element={user ? <SavedPage /> : <Navigate to="/login" replace />} />
+                        <Route path="/account" element={user ? <AccountPage /> : <Navigate to="/login" replace />} />
+                        <Route path="/settings" element={user ? <SettingsPage /> : <Navigate to="/login" replace />} />
+                        <Route path="*" element={<NotFoundPage />} />
+                    </Routes>
+                </Suspense>
+            </ErrorBoundary>
         </AppContext.Provider>
     );
 }

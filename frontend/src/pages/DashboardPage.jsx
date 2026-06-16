@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useApp } from "../context/AppContext";
 import { aiAPI } from "../lib/api";
 import {
@@ -14,6 +14,7 @@ import { RECIPES } from "../data/constants";
 import { RecipeCard, RecipeCardSkeleton } from "../components/RecipeCard";
 import IngredientManager from "../components/dashboard/IngredientManager";
 import { DashboardPreferencesSidebar as PreferenceSidebar } from "../components/dashboard/PreferencesSidebar";
+import FeedbackModal from "../components/FeedbackModal";
 
 export default function DashboardPage() {
     const {
@@ -43,11 +44,20 @@ export default function DashboardPage() {
         setSelectedServings,
         selectedMealType,
         setSelectedMealType,
+        loading,
+        stream,
+        streamingCount,
+        generateRecipes,
     } = useApp();
 
     const [showMobileFilters, setShowMobileFilters] = useState(false);
-    const [loading, setLoading] = useState(false);
-    const [stream, setStream] = useState("");
+    const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+    const [feedbackBannerDismissed, setFeedbackBannerDismissed] = useState(
+        () => sessionStorage.getItem("feedbackBannerDismissed") === "true"
+    );
+    const [generateCount, setGenerateCount] = useState(
+        () => parseInt(sessionStorage.getItem("generateCount") || "0", 10)
+    );
 
     const [openCategories, setOpenCategories] = useState({
         cuisine: false,
@@ -64,7 +74,7 @@ export default function DashboardPage() {
         selectedDiets.length +
         (selectedTime ? 1 : 0) +
         (selectedSpice ? 1 : 0) +
-        (selectedCalories ? 1 : 0) +
+        (selectedCalories[0] > 0 || selectedCalories[1] < 2000 ? 1 : 0) +
         (selectedServings ? 1 : 0) +
         (selectedMealType ? 1 : 0);
 
@@ -86,73 +96,15 @@ export default function DashboardPage() {
     }, []);
 
     const search = async () => {
-        setLoading(true);
-        setStream("");
-        setAiIntro("");
+        const newCount = generateCount + 1;
+        setGenerateCount(newCount);
+        sessionStorage.setItem("generateCount", newCount);
+        generateRecipes();
+    };
 
-        const prefs = [];
-        if (ingredients.length) {
-            const ingStrings = ingredients.map((i) => `${i.qty} ${i.name}`);
-            prefs.push(`ingredients available: ${ingStrings.join(", ")}`);
-        }
-        if (selectedCuisines.length)
-            prefs.push(`preferred cuisine: ${selectedCuisines.join(", ")}`);
-        if (selectedDiets.length)
-            prefs.push(`dietary needs: ${selectedDiets.join(", ")}`);
-        if (selectedTime) prefs.push(`time available: ${selectedTime}`);
-        if (selectedSpice) prefs.push(`spice level: ${selectedSpice}`);
-        if (selectedServings) prefs.push(`servings: ${selectedServings}`);
-        if (selectedMealType) prefs.push(`meal type: ${selectedMealType}`);
-
-        if (user?.experience) prefs.push(`skill level: ${user.experience}`);
-        if (user?.age)
-            prefs.push(`user age: ${user.age} (adjust tone appropriately)`);
-        if (user?.pantry?.length)
-            prefs.push(
-                `pantry staples available (use these freely): ${user.pantry.join(", ")}`,
-            );
-        if (user?.allergies?.length)
-            prefs.push(
-                `CRITICAL ALLERGIES TO AVOID: ${user.allergies.join(", ")}`,
-            );
-        if (user?.neverShowMe?.length)
-            prefs.push(
-                `STRICTLY DO NOT use these ingredients: ${user.neverShowMe.join(", ")}`,
-            );
-
-        try {
-            const response = await aiAPI.getRecommendations({
-                ingredients: ingredients.map((i) => i.name),
-                cuisine: selectedCuisines[0],
-                cookingTime: selectedTime,
-                dietaryType: selectedDiets[0],
-                spiceLevel: selectedSpice,
-                mealType: selectedMealType,
-            });
-
-            const aiRecipes = response.data.recipes || [];
-            const formattedResults = aiRecipes.map((r, index) => ({
-                id: `ai-${Date.now()}-${index}`,
-                ...r,
-            }));
-
-            setResults(formattedResults);
-            setAiIntro("Here are some wonderful recipes crafted just for you!");
-            setStream("Here are some wonderful recipes crafted just for you!");
-        } catch (err) {
-            console.error("AI Recommendation Error:", err);
-            const errorMessage = err.response?.data?.message || err.message;
-            setStream(
-                "I'm sorry, I'm having trouble connecting to my creative kitchen: " +
-                    errorMessage,
-            );
-            setAiIntro("Connection issue.");
-            setResults([]);
-        }
-
-        setLoading(false);
-        addXp(50);
-        handleCookDay();
+    const dismissBanner = () => {
+        setFeedbackBannerDismissed(true);
+        sessionStorage.setItem("feedbackBannerDismissed", "true");
     };
 
     return (
@@ -291,7 +243,7 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                {/* --- 3. MAIN CONTENT: RECIPES (Scrolls under left column on desktop) --- */}
+                {/* --- 3. MAIN CONTENT: RECIPES --- */}
                 <div className="order-3 lg:col-span-7 lg:col-start-1 lg:row-start-2 mt-4 lg:mt-0 pb-24 md:pb-20 -mx-4 px-4 md:-mx-6 md:px-6 lg:mx-0 lg:px-0">
                     {(stream || loading) && (
                         <div className="slide-up ai-response-container p-5 mb-7 flex items-start gap-3">
@@ -319,7 +271,9 @@ export default function DashboardPage() {
                                         />
                                     ))}
                                     <span className="text-brand-primary/60 text-[13px] ml-3 font-medium tracking-wide">
-                                        Thinking with AI…
+                                        {streamingCount > 0
+                                             ? `Generating recipe ${streamingCount + 1} of 6…`
+                                            : "Thinking with AI…"}
                                     </span>
                                 </div>
                             ) : (
@@ -333,17 +287,53 @@ export default function DashboardPage() {
                         </div>
                     )}
 
+                    {/* Contextual Feedback Banner — shows after 5+ generations */}
+                    {!loading && results.length > 0 && generateCount >= 5 && !feedbackBannerDismissed && (
+                        <div className="mb-5 slide-up flex items-center gap-3 px-4 py-3 rounded-2xl bg-brand-secondary/8 border border-brand-secondary/20">
+                            <span className="text-xl shrink-0">💬</span>
+                            <p className="text-[13px] text-brand-primary/70 flex-1">
+                                <span className="font-bold text-brand-primary">Enjoying Appitat?</span>{" "}
+                                Share your thoughts and help us improve!
+                            </p>
+                            <div className="flex items-center gap-2 shrink-0">
+                                <button
+                                    onClick={() => setShowFeedbackModal(true)}
+                                    className="px-3 py-1.5 rounded-lg bg-brand-secondary text-white text-[12px] font-bold cursor-pointer hover:bg-brand-secondary/90 transition-colors"
+                                >
+                                    Give Feedback
+                                </button>
+                                <button
+                                    onClick={dismissBanner}
+                                    className="text-brand-primary/30 hover:text-brand-primary/60 transition-colors cursor-pointer text-lg leading-none"
+                                    aria-label="Dismiss"
+                                >
+                                    ×
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 pb-20">
                         {loading ? (
-                            <>
-                                {[1, 2, 3, 4].map((i) => (
-                                    <RecipeCardSkeleton key={i} />
-                                ))}
-                            </>
+                             // Show 6 slots: filled cards for arrived recipes, skeletons for pending ones
+                             Array.from({ length: 6 }).map((_, i) =>
+                                results[i] ? (
+                                    <RecipeCard
+                                        key={results[i].id ? `${results[i].id}-${i}` : `loading-recipe-${i}`}
+                                        r={results[i]}
+                                        index={i}
+                                        isSaved={!!saved.find((s) => s.id === results[i].id)}
+                                        toggleSave={toggleSave}
+                                        navigate={navigate}
+                                    />
+                                ) : (
+                                    <RecipeCardSkeleton key={`skeleton-${i}`} />
+                                )
+                            )
                         ) : (
-                            results.map((r, i) => (
+                            results.filter(Boolean).map((r, i) => (
                                 <RecipeCard
-                                    key={r.id}
+                                    key={r.id ? `${r.id}-${i}` : `recipe-${i}`}
                                     r={r}
                                     index={i}
                                     isSaved={!!saved.find((s) => s.id === r.id)}
@@ -355,6 +345,11 @@ export default function DashboardPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Feedback Modal */}
+            {showFeedbackModal && (
+                <FeedbackModal onClose={() => setShowFeedbackModal(false)} />
+            )}
         </div>
     );
 }
